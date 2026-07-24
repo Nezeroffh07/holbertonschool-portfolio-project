@@ -1,30 +1,33 @@
+"""
+TUP (TeamUp Platform) — Backend
+Sprint 1: MVP Foundation
+"""
 from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+from app.database import Base, engine
+from app.routers import auth_routes
+
+app = FastAPI(
+    title="TUP - TeamUp Platform API",
+    description="Universitet tələbələri üçün komanda/layihə tapma platforması",
+    version="0.1.0",
+)
 
 
-class User(BaseModel):
-    username: str
-    email: str
-    password: str
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+Base.metadata.create_all(bind=engine)
+
+app.include_router(auth_routes.router)
 
 
-@app.get("/")
+@app.get("/", tags=["Health"], summary="Backend statusu")
 def home():
-    return {"message": "Backend is running"}
-
-
-@app.post("/signup")
-def signup(user: User):
-    return {
-        "message": "User created successfully",
-        "user": user
-    }
-
-
-@app.post("/login")
-def login(user: User):
-    return {
-        "message": "Login successful"
-    }
+    return {"message": "TUP Backend is running"}
