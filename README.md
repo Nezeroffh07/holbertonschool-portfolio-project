@@ -1,2 +1,2 @@
 # holbertonschool-portfolio-project
-Portfolio for zenith team
+Portfolio for Nexus team
