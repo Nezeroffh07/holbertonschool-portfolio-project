@@ -1,2 +1,1 @@
-holbertonschool-portfolio-project
-Portfolio for radiance team
+Portfolio for Nexus team
