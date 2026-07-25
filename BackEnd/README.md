@@ -34,8 +34,4 @@ app/
 └── routers/auth_routes.py Sign Up / Login
 ```
 
-## Qeyd
 
-Bu sprintdə JWT/token yoxdur — sadə uğur/uğursuzluq cavabı kifayətdir.
-Token-based auth və digər modullar (Profile, Project Board və s.)
-sonrakı sprintlərdə əlavə olunacaq.
