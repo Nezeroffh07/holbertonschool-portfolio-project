@@ -1,7 +1,7 @@
 """
 Pydantic sxemləri — API-yə gələn/gedən datanın forması.
 """
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
 
 class UserCreate(BaseModel):
     """Sign Up zamanı gələn data."""
