@@ -3,13 +3,11 @@ Pydantic sxemləri — API-yə gələn/gedən datanın forması.
 """
 from pydantic import BaseModel, EmailStr, ConfigDict
 
-
 class UserCreate(BaseModel):
     """Sign Up zamanı gələn data."""
     username: str
     email: EmailStr
-    password: str
-
+    password: str = Field(min_length=8, max_length=36)
 
 class UserLogin(BaseModel):
     """Login zamanı gələn data."""
