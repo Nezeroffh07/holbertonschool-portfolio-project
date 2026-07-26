@@ -1,8 +1,5 @@
-import {
-  UserPlus,
-  Search,
-  UsersRound,
-} from "lucide-react";
+import { UserPlus, Search, UsersRound } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 const steps = [
   {
@@ -30,14 +27,13 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section className="bg-[#F8FAFC] px-4 py-16 md:px-8">
+    <section className="bg-background px-4 py-16 md:px-8">
       <div className="mx-auto w-full max-w-6xl">
         <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-[24px] font-semibold text-[#1E293B]">
+          <h2 className="text-[24px] font-semibold text-foreground">
             How TUP Works
           </h2>
-
-          <p className="mt-4 text-base leading-relaxed text-[#64748B]">
+          <p className="mt-4 text-base leading-relaxed text-muted-foreground">
             Build your team in three simple steps.
           </p>
         </div>
@@ -45,30 +41,25 @@ export default function HowItWorks() {
         <div className="grid gap-8 md:grid-cols-3">
           {steps.map((step) => {
             const Icon = step.icon;
-
             return (
-              <div
-                key={step.number}
-                className="relative rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-sm"
-              >
-                <div className="mb-6 flex items-center justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#D3E8BF] text-[#16423C]">
-                    <Icon size={20} aria-hidden="true" />
+              <Card key={step.number} className="relative">
+                <CardContent className="p-6">
+                  <div className="mb-6 flex items-center justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                      <Icon size={20} aria-hidden="true" />
+                    </div>
+                    <span className="text-sm font-semibold text-primary">
+                      {step.number}
+                    </span>
                   </div>
-
-                  <span className="text-sm font-semibold text-[#44766C]">
-                    {step.number}
-                  </span>
-                </div>
-
-                <h3 className="text-[20px] font-semibold text-[#1E293B]">
-                  {step.title}
-                </h3>
-
-                <p className="mt-4 text-base leading-relaxed text-[#64748B]">
-                  {step.description}
-                </p>
-              </div>
+                  <h3 className="text-[20px] font-semibold text-foreground">
+                    {step.title}
+                  </h3>
+                  <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+                    {step.description}
+                  </p>
+                </CardContent>
+              </Card>
             );
           })}
         </div>
