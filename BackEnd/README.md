@@ -15,6 +15,9 @@ tapmasını asanlaşdıran platformanın backend hissəsi.
 
 ```bash
 cd TUP-Backend
+python -m venv venv
+**Windows:** venv\Scripts\activate
+**Mac/Linux:** source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
