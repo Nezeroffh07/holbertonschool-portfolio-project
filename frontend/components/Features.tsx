@@ -1,8 +1,5 @@
-import {
-  UserRound,
-  ClipboardList,
-  UsersRound,
-} from "lucide-react";
+import { UserRound, ClipboardList, UsersRound } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 const features = [
   {
@@ -27,40 +24,35 @@ const features = [
 
 export default function Features() {
   return (
-    <section className="bg-white px-4 py-16 md:px-8">
+    <section className="bg-card px-4 py-16 md:px-8">
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-12 max-w-2xl">
-          <h2 className="text-[24px] font-semibold text-[#1E293B]">
+          <h2 className="text-[24px] font-semibold text-foreground">
             Everything You Need to Build a Team
           </h2>
-
-          <p className="mt-4 text-base leading-relaxed text-[#64748B]">
-            TUP makes it easier to discover people, create projects, and build
-            the right team.
+          <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+            TUP makes it easier to discover people, create projects, and
+            build the right team.
           </p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
           {features.map((feature) => {
             const Icon = feature.icon;
-
             return (
-              <div
-                key={feature.title}
-                className="rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-sm"
-              >
-                <div className="mb-6 flex h-10 w-10 items-center justify-center rounded-lg bg-[#D3E8BF] text-[#16423C]">
-                  <Icon size={20} aria-hidden="true" />
-                </div>
-
-                <h3 className="text-[20px] font-semibold text-[#1E293B]">
-                  {feature.title}
-                </h3>
-
-                <p className="mt-4 text-base leading-relaxed text-[#64748B]">
-                  {feature.description}
-                </p>
-              </div>
+              <Card key={feature.title}>
+                <CardContent className="p-6">
+                  <div className="mb-6 flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                    <Icon size={20} aria-hidden="true" />
+                  </div>
+                  <h3 className="text-[20px] font-semibold text-foreground">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+                    {feature.description}
+                  </p>
+                </CardContent>
+              </Card>
             );
           })}
         </div>
