@@ -9,7 +9,7 @@ export default function Hero() {
             Build Your Perfect Team
           </h1>
 
-          <p className="mt-6 text-base leading-relaxed text-muted-foreground">
+          <p className="mt-6 text-base leading-normal text-muted-foreground">
             Find the right people for your next project, startup,
             research, or hackathon.
           </p>
