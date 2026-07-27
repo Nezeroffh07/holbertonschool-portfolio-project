@@ -5,7 +5,7 @@ export default function Hero() {
     <section className="flex min-h-[calc(100vh-72px)] items-center bg-background px-4 py-16 md:px-8">
       <div className="mx-auto w-full max-w-6xl">
         <div className="max-w-3xl">
-          <h1 className="text-[28px] font-bold leading-tight text-foreground md:text-[32px]">
+          <h1 className="text-[32px] font-bold leading-tight text-foreground md:text-[40px]">
             Build Your Perfect Team
           </h1>
 
