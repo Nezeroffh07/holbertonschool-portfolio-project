@@ -33,7 +33,7 @@ export default function HowItWorks() {
           <h2 className="text-[24px] font-semibold text-foreground">
             How TUP Works
           </h2>
-          <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+          <p className="mt-4 text-base leading-normal text-muted-foreground">
             Build your team in three simple steps.
           </p>
         </div>
@@ -55,7 +55,7 @@ export default function HowItWorks() {
                   <h3 className="text-[20px] font-semibold text-foreground">
                     {step.title}
                   </h3>
-                  <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+                  <p className="mt-4 text-base leading-normal text-muted-foreground">
                     {step.description}
                   </p>
                 </CardContent>
