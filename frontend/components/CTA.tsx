@@ -8,7 +8,7 @@ export default function CTA() {
           Ready to Build Your Team?
         </h2>
 
-        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#E2E8F0]">
+        <p className="mx-auto mt-4 max-w-2xl text-base leading-normal text-[#E2E8F0]">
           Find the right people for your next project, startup, research,
           or hackathon.
         </p>
