@@ -1,6 +1,6 @@
 export default function Footer() {
   return (
-    <footer className="border-t border-border bg-card px-4 py-10 md:px-8">
+    <footer className="border-t border-border bg-card px-4 py-12 md:px-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 md:flex-row md:items-start md:justify-between">
         <div className="max-w-sm">
           <h2 className="text-[20px] font-semibold text-[#16423C]">TUP</h2>
@@ -43,7 +43,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="mx-auto mt-10 max-w-6xl border-t border-border pt-6">
+      <div className="mx-auto mt-12 max-w-6xl border-t border-border pt-6">
         <p className="text-sm text-muted-foreground">
           © 2026 TUP. All rights reserved.
         </p>
