@@ -4,7 +4,7 @@ export default function Footer() {
       <div className="mx-auto flex max-w-6xl flex-col gap-8 md:flex-row md:items-start md:justify-between">
         <div className="max-w-sm">
           <h2 className="text-[20px] font-semibold text-[#16423C]">TUP</h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-3 text-sm leading-normal text-muted-foreground">
             Build better teams and create better projects with the right
             people.
           </p>
