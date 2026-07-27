@@ -30,7 +30,7 @@ export default function Features() {
           <h2 className="text-[24px] font-semibold text-foreground">
             Everything You Need to Build a Team
           </h2>
-          <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+          <p className="mt-4 text-base leading-normal text-muted-foreground">
             TUP makes it easier to discover people, create projects, and
             build the right team.
           </p>
@@ -48,7 +48,7 @@ export default function Features() {
                   <h3 className="text-[20px] font-semibold text-foreground">
                     {feature.title}
                   </h3>
-                  <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+                  <p className="mt-4 text-base leading-normal text-muted-foreground">
                     {feature.description}
                   </p>
                 </CardContent>
