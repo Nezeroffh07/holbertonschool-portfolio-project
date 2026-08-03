@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import ProtectedRoute from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +15,12 @@ import { Label } from "@/components/ui/label";
 type Skill = {
   id: number;
   name: string;
+};
+
+type User = {
+  id: number;
+  username: string;
+  email: string;
 };
 
 const today = new Date().toISOString().split("T")[0];
@@ -50,14 +58,17 @@ const projectSchema = z.object({
 type ProjectFormData = z.infer<typeof projectSchema>;
 
 export default function CreateProjectPage() {
+  const router = useRouter();
+
   const [skills, setSkills] = useState<Skill[]>([]);
   const [skillsLoading, setSkillsLoading] = useState(true);
   const [skillsError, setSkillsError] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
@@ -72,7 +83,9 @@ export default function CreateProjectPage() {
   useEffect(() => {
     async function getSkills() {
       try {
-        const response = await fetch("http://127.0.0.1:8000/skills");
+        const response = await fetch(
+          "http://127.0.0.1:8000/skills"
+        );
 
         if (!response.ok) {
           throw new Error("Skills could not be loaded.");
@@ -90,165 +103,230 @@ export default function CreateProjectPage() {
     getSkills();
   }, []);
 
-  function submitProject() {
-    // Project creation will be added after login integration.
+  async function submitProject(formData: ProjectFormData) {
+    setSubmitError("");
+
+    const savedUser = localStorage.getItem("user");
+
+    if (!savedUser) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      const user: User = JSON.parse(savedUser);
+
+      const projectData = {
+        title: formData.title,
+        description: formData.description,
+        open_positions: Number(formData.openPositions),
+        application_deadline: formData.deadline,
+        required_skill_ids: formData.requiredSkillIds.map(Number),
+        owner_id: user.id,
+      };
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/projects",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(projectData),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setSubmitError(
+          typeof data.detail === "string"
+            ? data.detail
+            : "Project could not be created."
+        );
+        return;
+      }
+
+      router.push("/projects");
+    } catch {
+      setSubmitError("Could not connect to the server.");
+    }
   }
 
   return (
-    <main className="min-h-screen bg-background px-4 py-12">
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-3xl font-bold text-foreground">
-          Create Project
-        </h1>
+    <ProtectedRoute>
+      <main className="min-h-screen bg-background px-4 py-12">
+        <div className="mx-auto max-w-3xl">
+          <h1 className="text-3xl font-bold text-foreground">
+            Create Project
+          </h1>
 
-        <p className="mt-2 text-muted-foreground">
-          Share your project idea and find the right team members.
-        </p>
+          <p className="mt-2 text-muted-foreground">
+            Share your project idea and find the right team members.
+          </p>
 
-        <form
-          onSubmit={handleSubmit(submitProject)}
-          className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm"
-          noValidate
-        >
-          <div className="space-y-2">
-            <Label htmlFor="title">Project Title</Label>
+          <form
+            onSubmit={handleSubmit(submitProject)}
+            className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm"
+            noValidate
+          >
+            <div className="space-y-2">
+              <Label htmlFor="title">
+                Project Title
+              </Label>
 
-            <Input
-              id="title"
-              type="text"
-              placeholder="Enter the project title"
-              aria-invalid={errors.title ? true : false}
-              {...register("title")}
-            />
+              <Input
+                id="title"
+                type="text"
+                placeholder="Enter the project title"
+                aria-invalid={errors.title ? true : false}
+                {...register("title")}
+              />
 
-            {errors.title && (
-              <p className="text-sm text-destructive">
-                {errors.title.message}
-              </p>
-            )}
-          </div>
+              {errors.title && (
+                <p className="text-sm text-destructive">
+                  {errors.title.message}
+                </p>
+              )}
+            </div>
 
-          <div className="mt-6 space-y-2">
-            <Label htmlFor="description">Project Description</Label>
+            <div className="mt-6 space-y-2">
+              <Label htmlFor="description">
+                Project Description
+              </Label>
 
-            <textarea
-              id="description"
-              rows={5}
-              placeholder="Describe your project idea"
-              aria-invalid={errors.description ? true : false}
-              className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30 aria-invalid:border-destructive"
-              {...register("description")}
-            />
+              <textarea
+                id="description"
+                rows={5}
+                placeholder="Describe your project idea"
+                aria-invalid={errors.description ? true : false}
+                className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30 aria-invalid:border-destructive"
+                {...register("description")}
+              />
 
-            {errors.description && (
-              <p className="text-sm text-destructive">
-                {errors.description.message}
-              </p>
-            )}
-          </div>
+              {errors.description && (
+                <p className="text-sm text-destructive">
+                  {errors.description.message}
+                </p>
+              )}
+            </div>
 
-          <div className="mt-6 space-y-3">
-            <Label>Required Skills</Label>
+            <div className="mt-6 space-y-3">
+              <Label>Required Skills</Label>
 
-            {skillsLoading && (
-              <p className="text-sm text-muted-foreground">
-                Loading skills...
-              </p>
-            )}
+              {skillsLoading && (
+                <p className="text-sm text-muted-foreground">
+                  Loading skills...
+                </p>
+              )}
 
-            {skillsError && (
-              <p className="text-sm text-destructive">
-                {skillsError}
-              </p>
-            )}
+              {skillsError && (
+                <p className="text-sm text-destructive">
+                  {skillsError}
+                </p>
+              )}
 
-            {!skillsLoading && !skillsError && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {skills.map((skill) => (
-                  <label
-                    key={skill.id}
-                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 hover:bg-secondary"
-                  >
-                    <input
-                      type="checkbox"
-                      value={String(skill.id)}
-                      className="h-4 w-4 accent-primary"
-                      {...register("requiredSkillIds")}
-                    />
+              {!skillsLoading && !skillsError && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {skills.map((skill) => (
+                    <label
+                      key={skill.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 hover:bg-secondary"
+                    >
+                      <input
+                        type="checkbox"
+                        value={String(skill.id)}
+                        className="h-4 w-4 accent-primary"
+                        {...register("requiredSkillIds")}
+                      />
 
-                    <span className="text-sm text-foreground">
-                      {skill.name}
-                    </span>
-                  </label>
-                ))}
+                      <span className="text-sm text-foreground">
+                        {skill.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {errors.requiredSkillIds && (
+                <p className="text-sm text-destructive">
+                  {errors.requiredSkillIds.message}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="openPositions">
+                  Open Positions
+                </Label>
+
+                <Input
+                  id="openPositions"
+                  type="number"
+                  min="1"
+                  max="10"
+                  placeholder="For example: 3"
+                  aria-invalid={
+                    errors.openPositions ? true : false
+                  }
+                  {...register("openPositions")}
+                />
+
+                {errors.openPositions && (
+                  <p className="text-sm text-destructive">
+                    {errors.openPositions.message}
+                  </p>
+                )}
               </div>
-            )}
 
-            {errors.requiredSkillIds && (
-              <p className="text-sm text-destructive">
-                {errors.requiredSkillIds.message}
+              <div className="space-y-2">
+                <Label htmlFor="deadline">
+                  Application Deadline
+                </Label>
+
+                <Input
+                  id="deadline"
+                  type="date"
+                  min={today}
+                  aria-invalid={errors.deadline ? true : false}
+                  {...register("deadline")}
+                />
+
+                {errors.deadline && (
+                  <p className="text-sm text-destructive">
+                    {errors.deadline.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {submitError && (
+              <p className="mt-6 text-sm text-destructive">
+                {submitError}
               </p>
             )}
-          </div>
 
-          <div className="mt-6 grid gap-6 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="openPositions">
-                Open Positions
-              </Label>
+            <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Link
+                href="/projects"
+                className="rounded-lg border border-border px-4 py-2 text-center text-sm font-medium text-foreground hover:bg-muted"
+              >
+                Cancel
+              </Link>
 
-              <Input
-                id="openPositions"
-                type="number"
-                min="1"
-                max="10"
-                placeholder="For example: 3"
-                aria-invalid={errors.openPositions ? true : false}
-                {...register("openPositions")}
-              />
-
-              {errors.openPositions && (
-                <p className="text-sm text-destructive">
-                  {errors.openPositions.message}
-                </p>
-              )}
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting
+                  ? "Creating project..."
+                  : "Create Project"}
+              </Button>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="deadline">
-                Application Deadline
-              </Label>
-
-              <Input
-                id="deadline"
-                type="date"
-                min={today}
-                aria-invalid={errors.deadline ? true : false}
-                {...register("deadline")}
-              />
-
-              {errors.deadline && (
-                <p className="text-sm text-destructive">
-                  {errors.deadline.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Link
-              href="/projects"
-              className="rounded-lg border border-border px-4 py-2 text-center text-sm font-medium text-foreground hover:bg-muted"
-            >
-              Cancel
-            </Link>
-
-            <Button type="submit">
-              Create Project
-            </Button>
-          </div>
-        </form>
-      </div>
-    </main>
+          </form>
+        </div>
+      </main>
+    </ProtectedRoute>
   );
 }
