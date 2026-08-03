@@ -1,7 +1,8 @@
 "use client";
+
+import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const navigation = [
   { name: "Home", href: "/" },
@@ -15,39 +16,42 @@ export default function Navbar() {
 
   return (
     <nav className="relative flex h-[72px] items-center justify-between border-b border-border bg-background px-4 md:px-8">
-      
+      <Link
         href="/"
-        className="flex flex-col leading-none text-[#16423C] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+        className="flex flex-col leading-none text-primary focus:outline-none focus:ring-2 focus:ring-primary"
       >
         <span className="text-2xl font-bold">TUP</span>
+
         <span className="mt-1 text-[10px] font-medium tracking-wide text-muted-foreground">
           Team Up Platform
         </span>
-      </a>
+      </Link>
 
       <ul className="hidden items-center gap-6 text-foreground md:flex">
         {navigation.map((item) => (
           <li key={item.name}>
-            
+            <Link
               href={item.href}
-              className="rounded-md px-2 py-1 transition-colors hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              className="rounded-md px-2 py-1 transition-colors hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {item.name}
-            </a>
+            </Link>
           </li>
         ))}
       </ul>
 
       <div className="flex items-center gap-3">
-        <Button asChild>
-          <a href="/login">Login</a>
-        </Button>
+        <Link
+          href="/login"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Login
+        </Link>
 
         <button
           type="button"
-          className="rounded-md p-2 text-[#16423C] focus:outline-none focus:ring-2 focus:ring-primary md:hidden"
+          className="rounded-md p-2 text-primary focus:outline-none focus:ring-2 focus:ring-primary md:hidden"
           aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={isMenuOpen}
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -59,13 +63,13 @@ export default function Navbar() {
           <ul className="flex flex-col gap-4 text-foreground">
             {navigation.map((item) => (
               <li key={item.name}>
-                
+                <Link
                   href={item.href}
                   onClick={() => setIsMenuOpen(false)}
-                  className="block rounded-md px-2 py-2 transition-colors hover:bg-background hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="block rounded-md px-2 py-2 hover:bg-secondary hover:text-secondary-foreground"
                 >
                   {item.name}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
