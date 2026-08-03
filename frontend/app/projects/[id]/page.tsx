@@ -36,11 +36,18 @@ type User = {
   email: string;
 };
 
+type Application = {
+  project_id: number;
+  status: string;
+};
+
 export default function ProjectDetailsPage() {
   const params = useParams<{ id: string }>();
 
   const [project, setProject] = useState<Project | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(
+    null
+  );
 
   const [loading, setLoading] = useState(true);
   const [projectError, setProjectError] = useState("");
@@ -51,6 +58,9 @@ export default function ProjectDetailsPage() {
   const [applicationMessage, setApplicationMessage] =
     useState("");
 
+  const [applicationStatus, setApplicationStatus] =
+    useState<string | null>(null);
+
   const [applicationError, setApplicationError] =
     useState("");
 
@@ -59,15 +69,6 @@ export default function ProjectDetailsPage() {
 
   const [applicationLoading, setApplicationLoading] =
     useState(false);
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-
-    if (savedUser) {
-      const user: User = JSON.parse(savedUser);
-      setCurrentUser(user);
-    }
-  }, []);
 
   useEffect(() => {
     async function getProject() {
@@ -92,6 +93,47 @@ export default function ProjectDetailsPage() {
     getProject();
   }, [params.id]);
 
+  useEffect(() => {
+    async function checkUserApplication() {
+      const savedUser = localStorage.getItem("user");
+
+      if (!savedUser) {
+        return;
+      }
+
+      const user: User = JSON.parse(savedUser);
+      setCurrentUser(user);
+
+      try {
+        const response = await fetch(
+          `http://127.0.0.1:8000/users/${user.id}/applications`
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const applications: Application[] =
+          await response.json();
+
+        const existingApplication = applications.find(
+          (application) =>
+            application.project_id === Number(params.id)
+        );
+
+        if (existingApplication) {
+          setApplicationStatus(
+            existingApplication.status
+          );
+        }
+      } catch {
+        setApplicationStatus(null);
+      }
+    }
+
+    checkUserApplication();
+  }, [params.id]);
+
   async function applyToProject(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -101,7 +143,9 @@ export default function ProjectDetailsPage() {
     setApplicationSuccess("");
 
     if (!currentUser || !project) {
-      setApplicationError("User information could not be found.");
+      setApplicationError(
+        "User information could not be found."
+      );
       return;
     }
 
@@ -142,10 +186,13 @@ export default function ProjectDetailsPage() {
         "Your application was submitted successfully."
       );
 
+      setApplicationStatus("pending");
       setApplicationMessage("");
       setShowApplicationForm(false);
     } catch {
-      setApplicationError("Could not connect to the server.");
+      setApplicationError(
+        "Could not connect to the server."
+      );
     } finally {
       setApplicationLoading(false);
     }
@@ -277,6 +324,15 @@ export default function ProjectDetailsPage() {
                   </div>
                 )}
 
+                {applicationStatus && (
+                  <div className="mt-8 rounded-lg border border-border bg-background p-4 text-sm text-foreground">
+                    Application status:{" "}
+                    <span className="font-semibold capitalize">
+                      {applicationStatus}
+                    </span>
+                  </div>
+                )}
+
                 {applicationError && (
                   <p className="mt-6 text-sm text-destructive">
                     {applicationError}
@@ -285,7 +341,7 @@ export default function ProjectDetailsPage() {
 
                 {!isProjectOwner &&
                   project.status === "open" &&
-                  !applicationSuccess &&
+                  !applicationStatus &&
                   !showApplicationForm && (
                     <button
                       type="button"
@@ -298,54 +354,55 @@ export default function ProjectDetailsPage() {
                     </button>
                   )}
 
-                {showApplicationForm && (
-                  <form
-                    onSubmit={applyToProject}
-                    className="mt-8 rounded-xl border border-border bg-background p-5"
-                  >
-                    <label
-                      htmlFor="applicationMessage"
-                      className="font-medium text-foreground"
+                {showApplicationForm &&
+                  !applicationStatus && (
+                    <form
+                      onSubmit={applyToProject}
+                      className="mt-8 rounded-xl border border-border bg-background p-5"
                     >
-                      Application Message
-                    </label>
+                      <label
+                        htmlFor="applicationMessage"
+                        className="font-medium text-foreground"
+                      >
+                        Application Message
+                      </label>
 
-                    <textarea
-                      id="applicationMessage"
-                      value={applicationMessage}
-                      onChange={(event) =>
-                        setApplicationMessage(
-                          event.target.value
-                        )
-                      }
-                      rows={5}
-                      placeholder="Explain why you would like to join this project"
-                      className="mt-2 w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
-                    />
-
-                    <div className="mt-4 flex justify-end gap-3">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowApplicationForm(false)
+                      <textarea
+                        id="applicationMessage"
+                        value={applicationMessage}
+                        onChange={(event) =>
+                          setApplicationMessage(
+                            event.target.value
+                          )
                         }
-                        className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-                      >
-                        Cancel
-                      </button>
+                        rows={5}
+                        placeholder="Explain why you would like to join this project"
+                        className="mt-2 w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
+                      />
 
-                      <button
-                        type="submit"
-                        disabled={applicationLoading}
-                        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {applicationLoading
-                          ? "Submitting..."
-                          : "Submit Application"}
-                      </button>
-                    </div>
-                  </form>
-                )}
+                      <div className="mt-4 flex justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowApplicationForm(false)
+                          }
+                          className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                        >
+                          Cancel
+                        </button>
+
+                        <button
+                          type="submit"
+                          disabled={applicationLoading}
+                          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {applicationLoading
+                            ? "Submitting..."
+                            : "Submit Application"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
               </article>
             )}
           </div>

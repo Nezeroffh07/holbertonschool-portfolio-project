@@ -86,7 +86,7 @@ export default function UserSidebar() {
 
   function logout() {
     localStorage.removeItem("user");
-    router.push("/");
+    window.location.href = "/";
   }
 
   const displayName =
