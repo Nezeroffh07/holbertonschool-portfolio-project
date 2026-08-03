@@ -3,15 +3,29 @@
 Universitet tələbələrinin akademik/innovativ layihələr üçün komanda üzvü
 tapmasını asanlaşdıran platformanın backend hissəsi.
 
-## Sprint 1 — MVP Foundation (bu paketin əhatə etdiyi hissə)
+## Sprint 2 — Core Features Integration
 
-- FastAPI ilə backend strukturu
-- SQLite + SQLAlchemy ilə verilənlər bazası
-- Sign Up / Login API-ləri (bcrypt ilə şifrə hash-ləmə)
-- Swagger/OpenAPI sənədləşməsi (`/docs`)
-- CORS aktiv — frontend inteqrasiyasına hazır
+Sprint 1-in (auth) üzərinə əlavə olundu:
+
+- **Skills** — ortaq bacarıq siyahısı (Profile və Project tərəfindən istifadə olunur)
+- **Profile** — istifadəçinin bio, universitet/fakültə, portfolio, bacarıqları
+- **Project Board** — layihə CRUD-u (yarat/bax/yenilə/sil), axtarış, status və
+  bacarığa görə filtrasiya
+- **Team Matching** — layihəyə müraciət et, sahib qəbul/rədd etsin, layihə
+  boş mövqe qalmayanda avtomatik bağlanır
+
+### ⚠️ Bilərəkdən edilmiş sadələşdirmə (Sprint 3-ə saxlanılıb)
+
+Bu sprintdə **JWT/token əsaslı autentifikasiya yoxdur** (acceptance criteria
+bunu tələb etmirdi). Ona görə "bu sorğunu edən kimdir" məlumatı request
+body-dən gəlir (`owner_id`, `applicant_id`). Bu, təhlükəsiz deyil — istənilən
+adam özünü başqası kimi göstərə bilər. Frontend login-dən sonra qayıdan
+`user.id`-ni yadda saxlayıb (məs. React state/localStorage) bu sahələrə
+ötürməlidir. Real auth (JWT + "cari istifadəçi" asılılığı) sonrakı sprintdə
+əlavə olunanda bu sahələr avtomatik token-dən veriləcək, request-dən silinəcək.
 
 ## Quraşdırma
+
 
 ```bash
 cd TUP-Backend
@@ -27,38 +41,49 @@ Swagger UI: http://127.0.0.1:8000/docs
 
 ## Endpoint-lər
 
-| Method | Path      | Təsvir                          |
-|--------|-----------|----------------------------------|
-| GET    | `/`       | Backend statusu                  |
-| POST   | `/signup` | Yeni istifadəçi qeydiyyatı       |
-| POST   | `/login`  | İstifadəçi girişi                |
+| Method | Path                              | Təsvir                              |
+|--------|-----------------------------------|--------------------------------------|
+| GET    | `/`                                | Backend statusu                      |
+| POST   | `/signup`                         | Qeydiyyat                            |
+| POST   | `/login`                          | Giriş                                |
+| GET    | `/skills`                         | Bütün bacarıqlar                     |
+| POST   | `/skills`                         | Yeni bacarıq yarat                   |
+| GET    | `/users/{user_id}/profile`        | Profili gətir                        |
+| PUT    | `/users/{user_id}/profile`        | Profili yarat/yenilə                 |
+| GET    | `/projects`                       | Layihələr (axtarış/filtrlə)          |
+| POST   | `/projects`                       | Yeni layihə                          |
+| GET    | `/projects/{id}`                  | Layihə detalları                     |
+| PUT    | `/projects/{id}`                  | Layihəni yenilə                      |
+| DELETE | `/projects/{id}`                  | Layihəni sil                         |
+| POST   | `/projects/{id}/apply`            | Layihəyə müraciət et                 |
+| GET    | `/projects/{id}/applications`     | Layihənin müraciətləri               |
+| GET    | `/users/{user_id}/applications`   | İstifadəçinin müraciətləri           |
+| PATCH  | `/applications/{id}`              | Müraciəti qəbul/rədd et              |
 
 ## Struktur
 
 ```
-TUP-Backend/
+BackEnd/
 ├── requirements.txt
 ├── .gitignore
+├── README.md
 └── app/
-    ├── main.py           # FastAPI app, CORS, router qoşulması
-    ├── database.py       # DB qoşulması (SQLite)
-    ├── models.py         # SQLAlchemy modelləri (User)
-    ├── schemas.py         # Pydantic sxemləri (request/response)
-    ├── auth.py            # Şifrə hash-ləmə (bcrypt)
+    ├── main.py                    # FastAPI app, CORS, router-lər, error handler
+    ├── database.py                # DB qoşulması (SQLite)
+    ├── models.py                  # SQLAlchemy modelləri
+    ├── schemas.py                 # Pydantic sxemləri
+    ├── auth.py                    # Şifrə hash-ləmə
     └── routers/
-        └── auth_routes.py # Sign Up / Login endpoint-ləri
+        ├── auth_routes.py         # Sign Up / Login
+        ├── skills_routes.py       # Skills
+        ├── profile_routes.py      # Profile
+        ├── project_routes.py      # Project Board (CRUD)
+        └── application_routes.py  # Team Matching
 ```
 
-## Gələcək sprintlər üçün planlaşdırılan modullar
+## Növbəti sprint üçün planlaşdırılan
 
-Layihə sənədinə əsasən aşağıdakılar sonrakı sprintlərdə əlavə olunacaq:
+- JWT/token əsaslı auth (real "cari istifadəçi" identifikasiyası)
+- Admin panel
+- Collaboration Dashboard (komanda üzvləri, rol idarəetməsi)
 
-- **Profile & Skills** — ixtisas, bacarıqlar, maraq sahələri, portfolio
-- **Project Board** — layihə yaratmaq, tələb olunan bacarıqlar, boş mövqelər
-- **Team Matching** — layihəyə müraciət, komanda rəhbərinin qərarı
-- **Collaboration Dashboard** — komanda strukturu, rol idarəetməsi
-- **Admin panel**
-
-Bu sprintdə bilərəkdən JWT/token sistemi əlavə edilməyib — sadə auth
-yoxlaması (login uğurlu/uğursuz) kifayətdir. Token-based auth sonrakı
-sprintdə əlavə oluna bilər.
