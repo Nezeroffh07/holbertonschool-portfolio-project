@@ -58,7 +58,7 @@ export default function ProfilePage() {
         setUser(currentUser);
 
         const response = await fetch(
-          `http://127.0.0.1:8000/users/${currentUser.id}/profile`
+          `${API_URL}/users/${currentUser.id}/profile`
         );
 
         if (response.status === 404) {
