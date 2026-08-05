@@ -88,7 +88,7 @@ class Profile(Base):
     faculty = Column(String, nullable=True)
     bio = Column(Text, nullable=True)
     portfolio_url = Column(String, nullable=True)
-
+    avatar_url = Column(String, nullable=True)
     user = relationship("User", back_populates="profile")
     skills = relationship("Skill", secondary=profile_skills)
 

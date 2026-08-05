@@ -69,7 +69,7 @@ def upsert_profile(
 ):
     _get_user_or_404(user_id, db)
     skills = _get_skills_or_400(payload.skill_ids, db)
-
+    profile.avatar_url = payload.avatar_url
     profile = (
         db.query(models.Profile)
         .filter(models.Profile.user_id == user_id)

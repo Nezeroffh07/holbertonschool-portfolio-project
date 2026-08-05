@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-
+import { API_URL } from "@/lib/api";
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
@@ -107,7 +107,7 @@ export default function EditProfilePage() {
         const user: User = JSON.parse(savedUser);
 
         const skillsResponse = await fetch(
-          "${API_URL}/skills"
+          `${API_URL}/skills`
         );
 
         if (!skillsResponse.ok) {

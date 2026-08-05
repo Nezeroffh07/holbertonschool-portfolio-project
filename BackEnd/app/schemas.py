@@ -13,16 +13,27 @@ alınacaq.
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, ConfigDict, Field
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator
 
 
 # ---------- Auth (Sprint 1-dən) ----------
+
+ALLOWED_EMAIL_DOMAIN = "qu.edu.az"
+
 
 class UserCreate(BaseModel):
     """Sign Up zamanı gələn data."""
     username: str
     email: EmailStr
     password: str = Field(min_length=8, max_length=36)
+
+    @field_validator("email")
+    @classmethod
+    def email_must_be_corporate(cls, value: str) -> str:
+        domain = value.split("@")[-1].lower()
+        if domain != ALLOWED_EMAIL_DOMAIN:
+            raise ValueError(f"Qeydiyyat yalnız @{ALLOWED_EMAIL_DOMAIN} email-ləri ilə mümkündür")
+        return value
 
 
 class UserLogin(BaseModel):
@@ -63,6 +74,7 @@ class ProfileUpsert(BaseModel):
     bio: Optional[str] = Field(default=None, max_length=1000)
     portfolio_url: Optional[str] = Field(default=None, max_length=300)
     skill_ids: list[int] = Field(default_factory=list)
+    avatar_url: Optional[str] = Field(default=None, max_length=500)
 
 
 class ProfileResponse(BaseModel):
@@ -74,6 +86,7 @@ class ProfileResponse(BaseModel):
     bio: Optional[str]
     portfolio_url: Optional[str]
     skills: list[SkillResponse]
+    avatar_url: Optional[str] = Field(default=None, max_length=500)
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -85,7 +85,7 @@ export default function CreateProjectPage() {
     async function getSkills() {
       try {
         const response = await fetch(
-          "${API_URL}/skills"
+          `${API_URL}/skills`
         );
 
         if (!response.ok) {
@@ -127,7 +127,7 @@ export default function CreateProjectPage() {
       };
 
       const response = await fetch(
-        "${API_URL}/projects",
+        `${API_URL}/projects`,
         {
           method: "POST",
           headers: {
