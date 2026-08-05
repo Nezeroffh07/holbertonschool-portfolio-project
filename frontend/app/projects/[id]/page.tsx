@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useParams } from "next/navigation";
+import { API_URL } from "@/lib/api";
 import {
   ArrowLeft,
   Calendar,
