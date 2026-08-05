@@ -107,7 +107,7 @@ export default function EditProfilePage() {
         const user: User = JSON.parse(savedUser);
 
         const skillsResponse = await fetch(
-          "http://127.0.0.1:8000/skills"
+          "${API_URL}/skills"
         );
 
         if (!skillsResponse.ok) {
@@ -120,7 +120,7 @@ export default function EditProfilePage() {
         setSkills(skillsData);
 
         const profileResponse = await fetch(
-          `http://127.0.0.1:8000/users/${user.id}/profile`
+          `${API_URL}/users/${user.id}/profile`
         );
 
         if (profileResponse.ok) {
@@ -175,7 +175,7 @@ export default function EditProfilePage() {
       };
 
       const response = await fetch(
-        `http://127.0.0.1:8000/users/${user.id}/profile`,
+        `${API_URL}/users/${user.id}/profile`,
         {
           method: "PUT",
           headers: {
