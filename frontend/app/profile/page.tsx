@@ -12,6 +12,7 @@ import {
 
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { API_URL } from "@/lib/api";
 
 type User = {
   id: number;
