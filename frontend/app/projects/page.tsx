@@ -39,8 +39,8 @@ export default function ProjectsPage() {
       try {
         const [projectsResponse, skillsResponse] =
           await Promise.all([
-            fetch("http://127.0.0.1:8000/projects"),
-            fetch("http://127.0.0.1:8000/skills"),
+            fetch("${API_URL}/projects"),
+            fetch("${API_URL}/skills"),
           ]);
 
         if (!projectsResponse.ok) {
