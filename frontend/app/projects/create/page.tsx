@@ -127,7 +127,7 @@ export default function CreateProjectPage() {
       };
 
       const response = await fetch(
-        "http://127.0.0.1:8000/projects",
+        "${API_URL}/projects",
         {
           method: "POST",
           headers: {
