@@ -85,7 +85,7 @@ export default function CreateProjectPage() {
     async function getSkills() {
       try {
         const response = await fetch(
-          "http://127.0.0.1:8000/skills"
+          "${API_URL}/skills"
         );
 
         if (!response.ok) {
