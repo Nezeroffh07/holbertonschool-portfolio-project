@@ -1,5 +1,14 @@
-import { UserPlus, Search, UsersRound } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
+import {
+  Search,
+  UserPlus,
+  UsersRound,
+} from "lucide-react";
+
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
 
 const steps = [
   {
@@ -7,6 +16,7 @@ const steps = [
     title: "Create Your Profile",
     description:
       "Add your skills, interests, experience, and portfolio to show what you can bring to a team.",
+    href: "/profile/edit",
     icon: UserPlus,
   },
   {
@@ -14,6 +24,7 @@ const steps = [
     title: "Find a Project",
     description:
       "Explore projects that match your interests or create your own project and share your idea.",
+    href: "/projects",
     icon: Search,
   },
   {
@@ -21,6 +32,7 @@ const steps = [
     title: "Build Your Team",
     description:
       "Connect with people who have the skills you need and build your ideal project team.",
+    href: "/find-team",
     icon: UsersRound,
   },
 ];
@@ -33,6 +45,7 @@ export default function HowItWorks() {
           <h2 className="text-[24px] font-semibold text-foreground">
             How TUP Works
           </h2>
+
           <p className="mt-4 text-base leading-normal text-muted-foreground">
             Build your team in three simple steps.
           </p>
@@ -41,25 +54,42 @@ export default function HowItWorks() {
         <div className="grid gap-8 md:grid-cols-3">
           {steps.map((step) => {
             const Icon = step.icon;
+
             return (
-              <Card key={step.number} className="relative">
-                <CardContent className="p-6">
-                  <div className="mb-6 flex items-center justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-                      <Icon size={20} aria-hidden="true" />
+              <Link
+                key={step.number}
+                href={step.href}
+                className="group rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              >
+                <Card className="h-full border-border bg-card transition-colors group-hover:border-primary group-hover:bg-secondary/20">
+                  <CardContent className="p-6">
+                    <div className="mb-6 flex items-center justify-between">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                        <Icon
+                          size={20}
+                          aria-hidden="true"
+                        />
+                      </div>
+
+                      <span className="text-sm font-semibold text-primary">
+                        {step.number}
+                      </span>
                     </div>
-                    <span className="text-sm font-semibold text-primary">
-                      {step.number}
-                    </span>
-                  </div>
-                  <h3 className="text-[20px] font-semibold text-foreground">
-                    {step.title}
-                  </h3>
-                  <p className="mt-4 text-base leading-normal text-muted-foreground">
-                    {step.description}
-                  </p>
-                </CardContent>
-              </Card>
+
+                    <h3 className="text-[20px] font-semibold text-foreground group-hover:text-primary">
+                      {step.title}
+                    </h3>
+
+                    <p className="mt-4 text-base leading-normal text-muted-foreground">
+                      {step.description}
+                    </p>
+
+                    <p className="mt-6 text-sm font-medium text-primary">
+                      Continue →
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
             );
           })}
         </div>

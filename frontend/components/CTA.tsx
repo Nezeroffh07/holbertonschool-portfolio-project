@@ -1,6 +1,20 @@
-import { Button } from "@/components/ui/button";
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function CTA() {
+  const [buttonLink, setButtonLink] =
+    useState("/register");
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+
+    if (savedUser) {
+      setButtonLink("/projects/create");
+    }
+  }, []);
+
   return (
     <section className="bg-[#16423C] px-4 py-16 md:px-8">
       <div className="mx-auto max-w-4xl text-center">
@@ -9,13 +23,16 @@ export default function CTA() {
         </h2>
 
         <p className="mx-auto mt-4 max-w-2xl text-base leading-normal text-[#E2E8F0]">
-          Find the right people for your next project, startup, research,
-          or hackathon.
+          Find the right people for your next project,
+          startup, research, or hackathon.
         </p>
 
-        <Button size="lg" variant="secondary" className="mt-8">
+        <Link
+          href={buttonLink}
+          className="mt-8 inline-block rounded-lg bg-secondary px-6 py-3 text-sm font-medium text-secondary-foreground hover:bg-secondary/90"
+        >
           Get Started
-        </Button>
+        </Link>
       </div>
     </section>
   );
