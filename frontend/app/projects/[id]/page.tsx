@@ -75,7 +75,7 @@ export default function ProjectDetailsPage() {
     async function getProject() {
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/projects/${params.id}`
+          `${API_URL}/projects/${params.id}`
         );
 
         if (!response.ok) {
@@ -107,7 +107,7 @@ export default function ProjectDetailsPage() {
 
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/users/${user.id}/applications`
+          `${API_URL}/users/${user.id}/applications`
         );
 
         if (!response.ok) {
@@ -166,7 +166,7 @@ export default function ProjectDetailsPage() {
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/projects/${project.id}/apply`,
+        `${API_URL}/projects/${project.id}/apply`,
         {
           method: "POST",
           headers: {
