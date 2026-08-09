@@ -1,0 +1,45 @@
+# Render Blueprint — backend + PostgreSQL bazasını birlikdə qurur.
+#
+# İSTİFADƏ:
+#   1. Bu faylı repo-ya commit edin
+#   2. Render.com → New → Blueprint → repo-nu seçin
+#   3. Render avtomatik həm web service, həm DB yaradacaq
+#
+# QEYD: rootDir "BackEnd" olaraq təyin edilib, çünki repo-da backend
+# kodu həmin alt-qovluqdadır. Repo strukturunuz fərqlidirsə düzəldin.
+
+databases:
+  - name: tup-db
+    databaseName: tup
+    plan: free
+
+services:
+  - type: web
+    name: tup-backend
+    runtime: python
+    plan: free
+    rootDir: BackEnd
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      # DB bağlantısı yuxarıdakı bazadan avtomatik götürülür
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tup-db
+          property: connectionString
+
+      # JWT imzalama açarı — Render avtomatik təsadüfi dəyər yaradacaq.
+      # Bu dəyəri heç vaxt kodda saxlamayın.
+      - key: SECRET_KEY
+        generateValue: true
+
+      # Token nə qədər etibarlı qalsın (dəqiqə). 1440 = 24 saat
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+
+      # Frontend deploy olunandan sonra bura real domeni yazın, məsələn:
+      #   https://tup-frontend.vercel.app
+      # Bir neçə domen üçün vergüllə ayırın.
+      - key: ALLOWED_ORIGINS
+        sync: false
