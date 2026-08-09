@@ -1,8 +1,6 @@
 """
 Autentifikasiya köməkçiləri: şifrə hash-ləmə + JWT token.
 
-Şifrələr HEÇ VAXT açıq (plain-text) şəkildə DB-yə yazılmır.
-
 Sprint 3-də JWT token sistemi əlavə olundu:
   - Login uğurlu olanda backend bir "access_token" qaytarır.
   - Frontend bu tokeni saxlayır və hər sorğuda göndərir:
