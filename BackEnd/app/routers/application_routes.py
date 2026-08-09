@@ -15,6 +15,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies import (
+    get_current_user,
+    get_current_user_optional,
+    resolve_actor_id,
+    require_ownership,
+)
 from app import models, schemas
 
 router = APIRouter(tags=["Team Matching"])
@@ -49,34 +55,38 @@ def _accepted_count(project_id: int, db: Session) -> int:
     summary="Layihəyə müraciət et",
 )
 def apply_to_project(
-    project_id: int, payload: schemas.ApplicationCreate, db: Session = Depends(get_db)
+    project_id: int,
+    payload: schemas.ApplicationCreate,
+    db: Session = Depends(get_db),
+    token_user: models.User | None = Depends(get_current_user_optional),
 ):
     project = _get_project_or_404(project_id, db)
+    applicant_id = resolve_actor_id(token_user, payload.applicant_id)
 
     applicant = (
-        db.query(models.User).filter(models.User.id == payload.applicant_id).first()
+        db.query(models.User).filter(models.User.id == applicant_id).first()
     )
     if not applicant:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="applicant_id-yə uyğun istifadəçi taplmad",
+            detail="applicant_id-yə uyğun istifadəçi tapılmadı",
         )
 
-    if project.owner_id == payload.applicant_id:
+    if project.owner_id == applicant_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Öz layihənizə müraciət edə bilməzsiniz",
         )
 
-    if project.status == "closed":
+    if project.status != "open":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Bu layihə artq müraciətləri qəbul etmir",
+            detail="Bu layihə artıq müraciətləri qəbul etmir",
         )
 
     application = models.Application(
         project_id=project_id,
-        applicant_id=payload.applicant_id,
+        applicant_id=applicant_id,
         message=payload.message,
     )
     db.add(application)
@@ -86,7 +96,7 @@ def apply_to_project(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Bu layihəyə artq müraciət etmisiniz",
+            detail="Bu layihəyə artıq müraciət etmisiniz",
         )
     db.refresh(application)
     return application
@@ -135,6 +145,7 @@ def update_application_status(
     application_id: int,
     payload: schemas.ApplicationStatusUpdate,
     db: Session = Depends(get_db),
+    token_user: models.User = Depends(get_current_user),
 ):
     application = (
         db.query(models.Application)
@@ -146,19 +157,25 @@ def update_application_status(
             status_code=status.HTTP_404_NOT_FOUND, detail="Müraciət tapılmadı"
         )
 
+    project = application.project
+
+    # Yalnız layihə sahibi müraciəti qəbul/rədd edə bilər
+    require_ownership(
+        token_user.id, project.owner_id,
+        "Yalnız layihə sahibi müraciətlərə qərar verə bilər",
+    )
+
     if application.status != "pending":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Bu müraciət artq '{application.status}' statusundadır, dəyişdirilə bilməz",
+            detail=f"Bu müraciət artıq '{application.status}' statusundadır, dəyişdirilə bilməz",
         )
-
-    project = application.project
 
     if payload.status == "accepted":
         if _accepted_count(project.id, db) >= project.open_positions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Layihədə boş mövqe qalmayb",
+                detail="Layihədə boş mövqe qalmayıb",
             )
 
     application.status = payload.status

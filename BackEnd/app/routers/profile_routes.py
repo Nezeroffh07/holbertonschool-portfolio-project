@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies import get_current_user_optional, require_ownership
 from app import models, schemas
 
 router = APIRouter(prefix="/users/{user_id}/profile", tags=["Profile"])
@@ -65,11 +66,22 @@ def get_profile(user_id: int, db: Session = Depends(get_db)):
     summary="Profili yarat və ya yenilə (upsert)",
 )
 def upsert_profile(
-    user_id: int, payload: schemas.ProfileUpsert, db: Session = Depends(get_db)
+    user_id: int,
+    payload: schemas.ProfileUpsert,
+    db: Session = Depends(get_db),
+    token_user: models.User | None = Depends(get_current_user_optional),
 ):
     _get_user_or_404(user_id, db)
+
+    # Token varsa, yalnız öz profilini dəyişməyə icazə verilir
+    if token_user is not None:
+        require_ownership(
+            token_user.id, user_id,
+            "Yalnız öz profilinizi dəyişə bilərsiniz",
+        )
+
     skills = _get_skills_or_400(payload.skill_ids, db)
-    profile.avatar_url = payload.avatar_url
+
     profile = (
         db.query(models.Profile)
         .filter(models.Profile.user_id == user_id)
@@ -84,6 +96,7 @@ def upsert_profile(
     profile.faculty = payload.faculty
     profile.bio = payload.bio
     profile.portfolio_url = payload.portfolio_url
+    profile.avatar_url = payload.avatar_url
     profile.skills = skills
 
     db.commit()

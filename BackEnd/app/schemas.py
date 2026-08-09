@@ -1,14 +1,16 @@
 """
 Pydantic sxemləri — API-yə gələn/gedən datanın forması.
 
-Qeyd (Sprint 2 üçün bilərəkdən sadələşdirmə):
-JWT/token sistemi bu sprintdə əlavə edilməyib (acceptance criteria bunu
-tələb etmir). Ona görə "bu sorğunu edən kimdir" məlumatı hələ tokendən
-deyil, sorğunun özündən (`owner_id`, `applicant_id`) gəlir. Bu, təhlükəsiz
-deyil (istənilən adam özünü başqası kimi göstərə bilər) və sadəcə müvəqqəti
-həlldir — real auth (JWT + "cari istifadəçi" asılılığı) sonrakı sprintdə
-əlavə olunanda bu sahələr request body-dən çıxarılıb token-dən avtomatik
-alınacaq.
+Qeyd (Sprint 3 — JWT keçid dövrü):
+Artıq JWT token sistemi var. "Bu sorğunu edən kimdir" məlumatı
+`Authorization: Bearer <token>` header-indən alınır.
+
+`owner_id` / `applicant_id` sahələri hələ sxemlərdə qalır, amma:
+  - DEPRECATED olaraq işarələnib
+  - Token göndərilirsə TAMAMILƏ nəzərə alınmır (token üstündür)
+  - Yalnız hələ JWT-yə keçməmiş köhnə frontend kodu sınmasın deyə saxlanılıb
+
+Frontend tam keçidi bitirəndən sonra bu sahələr silinməlidir.
 """
 from datetime import date, datetime
 from typing import Optional
@@ -49,6 +51,14 @@ class UserResponse(BaseModel):
     email: EmailStr
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class LoginResponse(BaseModel):
+    """Login cavabı — token + istifadəçi məlumatı."""
+    message: str
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
 
 
 # ---------- Skill ----------
@@ -99,7 +109,15 @@ class ProjectCreate(BaseModel):
     open_positions: int = Field(default=1, ge=1, le=50)
     application_deadline: Optional[date] = None
     required_skill_ids: list[int] = Field(default_factory=list)
-    owner_id: int  # bax: fayl başındakı qeyd — sonrakı sprintdə token-dən gələcək
+    owner_id: Optional[int] = Field(
+        default=None,
+        deprecated=True,
+        description=(
+            "DEPRECATED: Authorization header-i (Bearer token) göndərilirsə "
+            "bu sahə lazım deyil və nəzərə alınmır. Yalnız köhnə frontend kodu "
+            "üçün saxlanılıb."
+        ),
+    )
 
 
 class ProjectUpdate(BaseModel):
@@ -129,7 +147,15 @@ class ProjectResponse(BaseModel):
 # ---------- Application (Team Matching) ----------
 
 class ApplicationCreate(BaseModel):
-    applicant_id: int  # bax: fayl başındakı qeyd
+    applicant_id: Optional[int] = Field(
+        default=None,
+        deprecated=True,
+        description=(
+            "DEPRECATED: Authorization header-i (Bearer token) göndərilirsə "
+            "bu sahə lazım deyil və nəzərə alınmır. Yalnız köhnə frontend kodu "
+            "üçün saxlanılıb."
+        ),
+    )
     message: Optional[str] = Field(default=None, max_length=1000)
 
 

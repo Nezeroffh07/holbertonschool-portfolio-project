@@ -5,6 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies import (
+    get_current_user,
+    get_current_user_optional,
+    resolve_actor_id,
+    require_ownership,
+)
 from app import models, schemas
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -73,8 +79,14 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
     status_code=status.HTTP_201_CREATED,
     summary="Yeni layihə yarat",
 )
-def create_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db)):
-    owner = db.query(models.User).filter(models.User.id == payload.owner_id).first()
+def create_project(
+    payload: schemas.ProjectCreate,
+    db: Session = Depends(get_db),
+    token_user: models.User | None = Depends(get_current_user_optional),
+):
+    owner_id = resolve_actor_id(token_user, payload.owner_id)
+
+    owner = db.query(models.User).filter(models.User.id == owner_id).first()
     if not owner:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -87,7 +99,7 @@ def create_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db)
         description=payload.description,
         open_positions=payload.open_positions,
         application_deadline=payload.application_deadline,
-        owner_id=payload.owner_id,
+        owner_id=owner_id,
         required_skills=skills,
     )
     db.add(project)
@@ -102,9 +114,16 @@ def create_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db)
     summary="Layihəni yenilə (yalnız göndərilən sahələr dəyişir)",
 )
 def update_project(
-    project_id: int, payload: schemas.ProjectUpdate, db: Session = Depends(get_db)
+    project_id: int,
+    payload: schemas.ProjectUpdate,
+    db: Session = Depends(get_db),
+    token_user: models.User = Depends(get_current_user),
 ):
     project = _get_project_or_404(project_id, db)
+    require_ownership(
+        token_user.id, project.owner_id,
+        "Yalnız layihə sahibi bu layihəni dəyişə bilər",
+    )
     data = payload.model_dump(exclude_unset=True)
 
     if "required_skill_ids" in data:
@@ -124,8 +143,16 @@ def update_project(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Layihəni sil",
 )
-def delete_project(project_id: int, db: Session = Depends(get_db)):
+def delete_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    token_user: models.User = Depends(get_current_user),
+):
     project = _get_project_or_404(project_id, db)
+    require_ownership(
+        token_user.id, project.owner_id,
+        "Yalnız layihə sahibi bu layihəni silə bilər",
+    )
     db.delete(project)
     db.commit()
     return None
