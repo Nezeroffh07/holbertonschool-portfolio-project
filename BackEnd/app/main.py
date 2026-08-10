@@ -16,6 +16,7 @@ from app.routers import (
     profile_routes,
     project_routes,
     application_routes,
+    team_routes,
 )
 
 app = FastAPI(
@@ -56,6 +57,7 @@ app.include_router(skills_routes.router)
 app.include_router(profile_routes.router)
 app.include_router(project_routes.router)
 app.include_router(application_routes.router)
+app.include_router(team_routes.router)
 
 
 @app.exception_handler(RequestValidationError)
