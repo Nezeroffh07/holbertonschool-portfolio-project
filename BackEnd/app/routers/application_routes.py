@@ -1,14 +1,14 @@
 """
 Application (Team Matching) endpoint-ləri.
 
-Axn:
+Axın:
   1. İstifadəçi bir layihəyə müraciət edir → POST /projects/{id}/apply
-  2. Layihə sahibi müraciətlərə baxr → GET /projects/{id}/applications
+  2. Layihə sahibi müraciətlərə baxır → GET /projects/{id}/applications
   3. Sahib qəbul/rədd edir → PATCH /applications/{id}
   4. İstifadəçi öz müraciətlərini görür → GET /users/{id}/applications
 
-Qeyd: ayrca "TeamMember" cədvəli yoxdur — status="accepted" olan
-Application sətirləri komanda üzvləri kimi saylr.
+Qeyd: ayrıca "TeamMember" cədvəli yoxdur — status="accepted" olan
+Application sətirləri komanda üzvləri kimi sayılır.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -32,7 +32,7 @@ def _get_project_or_404(project_id: int, db: Session) -> models.Project:
     )
     if not project:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Layihə taplmadı"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Layihə tapılmadı"
         )
     return project
 
@@ -107,8 +107,16 @@ def apply_to_project(
     response_model=list[schemas.ApplicationResponse],
     summary="Layihəyə gələn bütün müraciətlər (layihə sahibi üçün)",
 )
-def list_project_applications(project_id: int, db: Session = Depends(get_db)):
-    _get_project_or_404(project_id, db)
+def list_project_applications(
+    project_id: int,
+    db: Session = Depends(get_db),
+    token_user: models.User = Depends(get_current_user),
+):
+    project = _get_project_or_404(project_id, db)
+    require_ownership(
+        token_user.id, project.owner_id,
+        "Yalnız layihə sahibi müraciətləri görə bilər",
+    )
     return (
         db.query(models.Application)
         .filter(models.Application.project_id == project_id)
@@ -159,7 +167,6 @@ def update_application_status(
 
     project = application.project
 
-    # Yalnız layihə sahibi müraciəti qəbul/rədd edə bilər
     require_ownership(
         token_user.id, project.owner_id,
         "Yalnız layihə sahibi müraciətlərə qərar verə bilər",
@@ -181,7 +188,6 @@ def update_application_status(
     application.status = payload.status
     db.commit()
 
-    # Boş mövqe qalmayıbsa, layihəni avtomatik bağla
     if payload.status == "accepted" and _accepted_count(project.id, db) >= project.open_positions:
         project.status = "closed"
         db.commit()
