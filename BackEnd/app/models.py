@@ -125,6 +125,9 @@ class Application(Base):
     applicant_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     message = Column(Text, nullable=True)
     status = Column(String, nullable=False, default="pending")  # pending | accepted | rejected
+    # Yalnız status="accepted" olanda mənalıdır — komanda üzvünün layihədəki rolu
+    # (məs. "Frontend Developer", "Team Lead"). Sahib bunu Dashboard-dan təyin edir.
+    role = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     project = relationship("Project", back_populates="applications")
