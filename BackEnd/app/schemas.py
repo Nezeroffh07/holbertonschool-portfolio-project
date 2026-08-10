@@ -169,6 +169,24 @@ class ApplicationResponse(BaseModel):
     applicant_id: int
     message: Optional[str]
     status: str
+    role: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ---------- Collaboration Dashboard ----------
+
+class TeamMemberResponse(BaseModel):
+    """Layihənin bir komanda üzvü — Application-ın 'accepted' halının
+    Dashboard üçün göstərilən görünüşüdür."""
+    application_id: int
+    user_id: int
+    username: str
+    email: EmailStr
+    role: Optional[str] = None
+    joined_at: datetime
+
+
+class RoleUpdate(BaseModel):
+    role: str = Field(min_length=1, max_length=50, examples=["Frontend Developer"])
