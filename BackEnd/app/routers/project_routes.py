@@ -1,7 +1,7 @@
 """
 Project (Project Board) endpoint-ləri — tam CRUD.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -44,15 +44,23 @@ def _get_skills_or_400(skill_ids: list[int], db: Session) -> list[models.Skill]:
 @router.get(
     "",
     response_model=list[schemas.ProjectResponse],
-    summary="Layihələri siyahıla (axtarış və filtrlə birlikdə)",
+    summary="Layihələri siyahıla (axtarış, filtr və səhifələmə ilə)",
+    description=(
+        "Nəticələr səhifələnir (default: 20). Çox sayda layihə olanda "
+        "hamısını bir dəfəyə çəkməmək üçün `limit` və `offset` istifadə edin.\n\n"
+        "Ümumi sayı cavabın `X-Total-Count` header-indən oxumaq olar."
+    ),
 )
 def list_projects(
+    response: Response,
     db: Session = Depends(get_db),
     search: str | None = Query(default=None, description="Başlıqda axtarış"),
     status_filter: str | None = Query(
-        default=None, alias="status", pattern="^(open|closed)$"
+        default=None, alias="status", pattern=schemas.PROJECT_STATUS_PATTERN
     ),
     skill_id: int | None = Query(default=None, description="Bu bacarığı tələb edən layihələr"),
+    limit: int = Query(default=20, ge=1, le=100, description="Bir səhifədə neçə layihə"),
+    offset: int = Query(default=0, ge=0, description="Neçə layihə buraxılsın"),
 ):
     q = db.query(models.Project)
     if search:
@@ -61,7 +69,16 @@ def list_projects(
         q = q.filter(models.Project.status == status_filter)
     if skill_id:
         q = q.filter(models.Project.required_skills.any(models.Skill.id == skill_id))
-    return q.order_by(models.Project.created_at.desc()).all()
+
+    # Frontend "neçə səhifə var" hesablaya bilsin deyə ümumi sayı header-də veririk
+    response.headers["X-Total-Count"] = str(q.count())
+
+    return (
+        q.order_by(models.Project.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
 
 @router.get(
