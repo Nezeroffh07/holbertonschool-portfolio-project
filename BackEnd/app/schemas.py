@@ -85,6 +85,16 @@ class ProfileUpsert(BaseModel):
     portfolio_url: Optional[str] = Field(default=None, max_length=300)
     skill_ids: list[int] = Field(default_factory=list)
     avatar_url: Optional[str] = Field(default=None, max_length=500)
+    interests: Optional[str] = Field(
+        default=None, max_length=500,
+        description="Maraq sahələri (məs. 'Süni intellekt, Robototexnika, UI dizayn')",
+        examples=["Süni intellekt, Veb inkişaf, Startup"],
+    )
+    previous_projects: Optional[str] = Field(
+        default=None, max_length=2000,
+        description="Əvvəlki layihələr haqqında qısa məlumat",
+        examples=["Universitet daxili hackathonda mobil tətbiq (2025)"],
+    )
 
 
 class ProfileResponse(BaseModel):
@@ -97,11 +107,19 @@ class ProfileResponse(BaseModel):
     portfolio_url: Optional[str]
     skills: list[SkillResponse]
     avatar_url: Optional[str] = Field(default=None, max_length=500)
+    interests: Optional[str] = None
+    previous_projects: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 # ---------- Project ----------
+
+# QEYD: Komanda yoldaşınızın istədiyi "in_progress" və "completed" statusları
+# bu repo-ya hələ köçürülməyib — hazırda yalnız open/closed mövcuddur.
+# Əlavə etmək istəsəniz, bura yazmaq kifayətdir:
+#   PROJECT_STATUS_PATTERN = "^(open|in_progress|completed|closed)$"
+PROJECT_STATUS_PATTERN = "^(open|closed)$"
 
 class ProjectCreate(BaseModel):
     title: str = Field(min_length=3, max_length=150)
@@ -126,7 +144,7 @@ class ProjectUpdate(BaseModel):
     description: Optional[str] = Field(default=None, min_length=10, max_length=3000)
     open_positions: Optional[int] = Field(default=None, ge=1, le=50)
     application_deadline: Optional[date] = None
-    status: Optional[str] = Field(default=None, pattern="^(open|closed)$")
+    status: Optional[str] = Field(default=None, pattern=PROJECT_STATUS_PATTERN)
     required_skill_ids: Optional[list[int]] = None
 
 
@@ -190,3 +208,34 @@ class TeamMemberResponse(BaseModel):
 
 class RoleUpdate(BaseModel):
     role: str = Field(min_length=1, max_length=50, examples=["Frontend Developer"])
+
+
+# ---------- Admin Panel ----------
+
+class AdminUserResponse(BaseModel):
+    """Admin panelində göstərilən istifadəçi məlumatı.
+    Şifrə (hash daxil) HEÇ VAXT qaytarılmır."""
+    id: int
+    username: str
+    email: EmailStr
+    is_admin: bool
+    is_blocked: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BlockUpdate(BaseModel):
+    is_blocked: bool = Field(
+        description="true — hesabı blokla, false — bloku götür",
+        examples=[True],
+    )
+
+
+class AdminStatsResponse(BaseModel):
+    """Admin panelinin ümumi statistikası."""
+    total_users: int
+    blocked_users: int
+    total_projects: int
+    open_projects: int
+    total_applications: int
+    total_skills: int
