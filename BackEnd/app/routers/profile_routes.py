@@ -21,7 +21,7 @@ def _get_user_or_404(user_id: int, db: Session) -> models.User:
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="İstifadəçi taplmad",
+            detail="İstifadəçi tapılmadı",
         )
     return user
 
@@ -97,6 +97,8 @@ def upsert_profile(
     profile.bio = payload.bio
     profile.portfolio_url = payload.portfolio_url
     profile.avatar_url = payload.avatar_url
+    profile.interests = payload.interests
+    profile.previous_projects = payload.previous_projects
     profile.skills = skills
 
     db.commit()
