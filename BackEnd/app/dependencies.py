@@ -33,7 +33,7 @@ def get_current_user_optional(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> Optional[models.User]:
-    """Token varsa istifadəçini qaytarr, yoxdursa None (xəta atmr)."""
+    """Token varsa istifadəçini qaytarır, yoxdursa None (xəta atmır)."""
     if credentials is None:
         return None
 
@@ -41,7 +41,7 @@ def get_current_user_optional(
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token etibarszdr və ya vaxt keçib",
+            detail="Token etibarsızdır və ya vaxtı keçib",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -49,9 +49,18 @@ def get_current_user_optional(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Tokendəki istifadəçi taplmad",
+            detail="Tokendəki istifadəçi tapılmadı",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Bloklanmış istifadəçinin köhnə (blokdan əvvəl alınmış) tokeni də
+    # işləməməlidir — əks halda blok effektsiz qalardı.
+    if user.is_blocked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hesabınız bloklanıb. Ətraflı məlumat üçün administratorla əlaqə saxlayın.",
+        )
+
     return user
 
 
@@ -62,7 +71,7 @@ def get_current_user(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Bu əməliyyat üçün daxil olmalz",
+            detail="Bu əməliyyat üçün daxil olmalısınız",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
@@ -85,15 +94,36 @@ def resolve_actor_id(
         return body_user_id
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Bu əməliyyat üçün daxil olmalsnz",
+        detail="Bu əməliyyat üçün daxil olmalısınız",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
 
 def require_ownership(actor_id: int, owner_id: int, message: str) -> None:
-    """Sorğunu edənin həqiqətən resursun sahibi olduğunu yoxlayr."""
+    """Sorğunu edənin həqiqətən resursun sahibi olduğunu yoxlayır."""
     if actor_id != owner_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=message,
         )
+
+
+def require_admin(
+    current_user: models.User = Depends(get_current_user),
+) -> models.User:
+    """
+    Yalnız admin istifadəçilərə icazə verir.
+
+    Admin statusu (`users.is_admin`) YALNIZ verilənlər bazasından əl ilə
+    təyin olunur — heç bir endpoint onu dəyişmir. Bu, qəsdən belədir ki,
+    kimsə API vasitəsilə özünü admin edə bilməsin.
+
+    Admin təyin etmək üçün DB-də:
+        UPDATE users SET is_admin = true WHERE email = 'admin@qu.edu.az';
+    """
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bu əməliyyat üçün admin səlahiyyəti tələb olunur",
+        )
+    return current_user
