@@ -67,6 +67,12 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
             detail="Email və ya şifrə yanlışdır",
         )
 
+    if user.is_blocked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hesabınız bloklanıb. Ətraflı məlumat üçün administratorla əlaqə saxlayın.",
+        )
+
     return {
         "message": "Login successful",
         "access_token": auth.create_access_token(user.id),
