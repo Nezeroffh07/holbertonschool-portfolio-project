@@ -5,7 +5,9 @@ Universitet tələbələri üçün komanda/layihə tapma platformasının backen
 **Stack:** FastAPI, SQLAlchemy, PostgreSQL (production) / SQLite (lokal), JWT
 
 **Canlı:** https://tup-backend.onrender.com
-**Swagger:** https://tup-backend.onrender.com/docs (parol tələb edir — Render → `tup-backend` → Environment-də `DOCS_USERNAME`/`DOCS_PASSWORD`-a baxın, ya da komanda yoldaşından soruşun)
+**Swagger:** https://tup-backend.onrender.com/docs 
+username: tup
+password: 1937Tup@
 
 ---
 
