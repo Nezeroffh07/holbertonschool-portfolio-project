@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { API_URL } from "@/lib/api";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,8 @@ type User = {
 
 type LoginResponse = {
   message: string;
+  access_token: string;
+  token_type: string;
   user: User;
 };
 
@@ -58,16 +61,13 @@ export default function LoginPage() {
     setLoginError("");
 
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        }
-      );
+      const response = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
 
       const data = await response.json();
 
@@ -78,10 +78,8 @@ export default function LoginPage() {
 
       const loginData: LoginResponse = data;
 
-      localStorage.setItem(
-        "user",
-        JSON.stringify(loginData.user)
-      );
+      localStorage.setItem("access_token", loginData.access_token);
+      localStorage.setItem("user", JSON.stringify(loginData.user));
 
       router.push("/");
     } catch {
@@ -92,9 +90,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-16">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-foreground">
-          Login
-        </h1>
+        <h1 className="text-2xl font-semibold text-foreground">Login</h1>
 
         <p className="mt-2 text-sm text-muted-foreground">
           Login to create projects and join a team.
@@ -106,10 +102,7 @@ export default function LoginPage() {
           noValidate
         >
           <div className="space-y-2">
-            <Label htmlFor="email">
-              University Email
-            </Label>
-
+            <Label htmlFor="email">University Email</Label>
             <Input
               id="email"
               type="email"
@@ -117,7 +110,6 @@ export default function LoginPage() {
               aria-invalid={errors.email ? true : false}
               {...register("email")}
             />
-
             {errors.email && (
               <p className="text-sm text-destructive">
                 {errors.email.message}
@@ -126,10 +118,7 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">
-              Password
-            </Label>
-
+            <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               type="password"
@@ -137,7 +126,6 @@ export default function LoginPage() {
               aria-invalid={errors.password ? true : false}
               {...register("password")}
             />
-
             {errors.password && (
               <p className="text-sm text-destructive">
                 {errors.password.message}
@@ -146,16 +134,10 @@ export default function LoginPage() {
           </div>
 
           {loginError && (
-            <p className="text-sm text-destructive">
-              {loginError}
-            </p>
+            <p className="text-sm text-destructive">{loginError}</p>
           )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-          >
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Logging in..." : "Login"}
           </Button>
         </form>
