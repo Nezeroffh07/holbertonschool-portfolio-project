@@ -52,5 +52,8 @@ app/
 Admin statusu yalnız verilənlər bazasından əl ilə təyin olunur:
 
 ```sql
+Hazırki admin user:
+admin@qu.edu.az
+1937Tup@
 UPDATE users SET is_admin = true WHERE email = 'sizin@qu.edu.az';
 ```
