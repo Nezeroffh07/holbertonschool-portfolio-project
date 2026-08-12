@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { API_URL } from "@/lib/api";
+import { API_URL, getAuthHeaders } from "@/lib/api";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
@@ -84,9 +84,7 @@ export default function CreateProjectPage() {
   useEffect(() => {
     async function getSkills() {
       try {
-        const response = await fetch(
-          `${API_URL}/skills`
-        );
+        const response = await fetch(`${API_URL}/skills`);
 
         if (!response.ok) {
           throw new Error("Skills could not be loaded.");
@@ -126,16 +124,11 @@ export default function CreateProjectPage() {
         owner_id: user.id,
       };
 
-      const response = await fetch(
-        `${API_URL}/projects`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(projectData),
-        }
-      );
+      const response = await fetch(`${API_URL}/projects`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(projectData),
+      });
 
       const data = await response.json();
 
@@ -172,9 +165,7 @@ export default function CreateProjectPage() {
             noValidate
           >
             <div className="space-y-2">
-              <Label htmlFor="title">
-                Project Title
-              </Label>
+              <Label htmlFor="title">Project Title</Label>
 
               <Input
                 id="title"
@@ -192,9 +183,7 @@ export default function CreateProjectPage() {
             </div>
 
             <div className="mt-6 space-y-2">
-              <Label htmlFor="description">
-                Project Description
-              </Label>
+              <Label htmlFor="description">Project Description</Label>
 
               <textarea
                 id="description"
@@ -222,9 +211,7 @@ export default function CreateProjectPage() {
               )}
 
               {skillsError && (
-                <p className="text-sm text-destructive">
-                  {skillsError}
-                </p>
+                <p className="text-sm text-destructive">{skillsError}</p>
               )}
 
               {!skillsLoading && !skillsError && (
@@ -258,9 +245,7 @@ export default function CreateProjectPage() {
 
             <div className="mt-6 grid gap-6 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="openPositions">
-                  Open Positions
-                </Label>
+                <Label htmlFor="openPositions">Open Positions</Label>
 
                 <Input
                   id="openPositions"
@@ -268,9 +253,7 @@ export default function CreateProjectPage() {
                   min="1"
                   max="10"
                   placeholder="For example: 3"
-                  aria-invalid={
-                    errors.openPositions ? true : false
-                  }
+                  aria-invalid={errors.openPositions ? true : false}
                   {...register("openPositions")}
                 />
 
@@ -282,9 +265,7 @@ export default function CreateProjectPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="deadline">
-                  Application Deadline
-                </Label>
+                <Label htmlFor="deadline">Application Deadline</Label>
 
                 <Input
                   id="deadline"
@@ -303,9 +284,7 @@ export default function CreateProjectPage() {
             </div>
 
             {submitError && (
-              <p className="mt-6 text-sm text-destructive">
-                {submitError}
-              </p>
+              <p className="mt-6 text-sm text-destructive">{submitError}</p>
             )}
 
             <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -316,13 +295,8 @@ export default function CreateProjectPage() {
                 Cancel
               </Link>
 
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-              >
-                {isSubmitting
-                  ? "Creating project..."
-                  : "Create Project"}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Creating project..." : "Create Project"}
               </Button>
             </div>
           </form>
