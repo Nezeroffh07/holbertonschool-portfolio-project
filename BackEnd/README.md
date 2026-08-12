@@ -1,33 +1,17 @@
 # TUP — TeamUp Platform (Backend)
 
-Universitet tələbələrinin akademik/innovativ layihələr üçün komanda üzvü
-tapmasını asanlaşdıran platformanın backend hissəsi.
+Universitet tələbələri üçün komanda/layihə tapma platformasının backend hissəsi.
 
-## Sprint 2 — Core Features Integration
+**Stack:** FastAPI, SQLAlchemy, PostgreSQL (production) / SQLite (lokal), JWT
 
-Sprint 1-in (auth) üzərinə əlavə olundu:
+**Canlı:** https://tup-backend.onrender.com
+**Swagger:** https://tup-backend.onrender.com/docs (parol tələb edir — Render → `tup-backend` → Environment-də `DOCS_USERNAME`/`DOCS_PASSWORD`-a baxın, ya da komanda yoldaşından soruşun)
 
-- **Skills** — ortaq bacarıq siyahısı (Profile və Project tərəfindən istifadə olunur)
-- **Profile** — istifadəçinin bio, universitet/fakültə, portfolio, bacarıqları
-- **Project Board** — layihə CRUD-u (yarat/bax/yenilə/sil), axtarış, status və
-  bacarığa görə filtrasiya
-- **Team Matching** — layihəyə müraciət et, sahib qəbul/rədd etsin, layihə
-  boş mövqe qalmayanda avtomatik bağlanır
+---
 
-### ⚠️ Bilərəkdən edilmiş sadələşdirmə (Sprint 3-ə saxlanılıb)
+## Lokal işə salmaq (kod üzərində işləmək üçün)
 
-Bu sprintdə **JWT/token əsaslı autentifikasiya yoxdur** (acceptance criteria
-bunu tələb etmirdi). Ona görə "bu sorğunu edən kimdir" məlumatı request
-body-dən gəlir (`owner_id`, `applicant_id`). Bu, təhlükəsiz deyil — istənilən
-adam özünü başqası kimi göstərə bilər. Frontend login-dən sonra qayıdan
-`user.id`-ni yadda saxlayıb (məs. React state/localStorage) bu sahələrə
-ötürməlidir. Real auth (JWT + "cari istifadəçi" asılılığı) sonrakı sprintdə
-əlavə olunanda bu sahələr avtomatik token-dən veriləcək, request-dən silinəcək.
-
-## Quraşdırma
-
-
-```bash
+```
 cd TUP-Backend
 python -m venv venv
 **Windows:** venv\Scripts\activate
@@ -36,54 +20,35 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Server: http://127.0.0.1:8000
-Swagger UI: http://127.0.0.1:8000/docs
+Swagger: http://127.0.0.1:8000/docs 
 
-## Endpoint-lər
+---
 
-| Method | Path                              | Təsvir                              |
-|--------|-----------------------------------|--------------------------------------|
-| GET    | `/`                                | Backend statusu                      |
-| POST   | `/signup`                         | Qeydiyyat                            |
-| POST   | `/login`                          | Giriş                                |
-| GET    | `/skills`                         | Bütün bacarıqlar                     |
-| POST   | `/skills`                         | Yeni bacarıq yarat                   |
-| GET    | `/users/{user_id}/profile`        | Profili gətir                        |
-| PUT    | `/users/{user_id}/profile`        | Profili yarat/yenilə                 |
-| GET    | `/projects`                       | Layihələr (axtarış/filtrlə)          |
-| POST   | `/projects`                       | Yeni layihə                          |
-| GET    | `/projects/{id}`                  | Layihə detalları                     |
-| PUT    | `/projects/{id}`                  | Layihəni yenilə                      |
-| DELETE | `/projects/{id}`                  | Layihəni sil                         |
-| POST   | `/projects/{id}/apply`            | Layihəyə müraciət et                 |
-| GET    | `/projects/{id}/applications`     | Layihənin müraciətləri               |
-| GET    | `/users/{user_id}/applications`   | İstifadəçinin müraciətləri           |
-| PATCH  | `/applications/{id}`              | Müraciəti qəbul/rədd et              |
+## Giriş (JWT)
+
+`POST /login` → `access_token` qaytarır. Swagger-də **Authorize** düyməsinə basıb tokeni yapışdırın.
+
+---
 
 ## Struktur
 
 ```
-BackEnd/
-├── requirements.txt
-├── .gitignore
-├── README.md
-└── app/
-    ├── main.py                    # FastAPI app, CORS, router-lər, error handler
-    ├── database.py                # DB qoşulması (SQLite)
-    ├── models.py                  # SQLAlchemy modelləri
-    ├── schemas.py                 # Pydantic sxemləri
-    ├── auth.py                    # Şifrə hash-ləmə
-    └── routers/
-        ├── auth_routes.py         # Sign Up / Login
-        ├── skills_routes.py       # Skills
-        ├── profile_routes.py      # Profile
-        ├── project_routes.py      # Project Board (CRUD)
-        └── application_routes.py  # Team Matching
+app/
+├── main.py           # FastAPI app, CORS, router-lər
+├── database.py       # DB qoşulması
+├── models.py         # SQLAlchemy modelləri
+├── schemas.py        # Pydantic sxemləri
+├── auth.py           # Şifrə + JWT
+├── dependencies.py   # Cari istifadəçi, icazələr
+└── routers/          # Endpoint-lər (auth, skills, profile, projects, applications, team, admin)
 ```
 
-## Növbəti sprint üçün planlaşdırılan
+---
 
-- JWT/token əsaslı auth (real "cari istifadəçi" identifikasiyası)
-- Admin panel
-- Collaboration Dashboard (komanda üzvləri, rol idarəetməsi)
+## Admin təyin etmək
 
+Admin statusu yalnız verilənlər bazasından əl ilə təyin olunur:
+
+```sql
+UPDATE users SET is_admin = true WHERE email = 'sizin@qu.edu.az';
+```
