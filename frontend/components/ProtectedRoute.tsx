@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  API_URL,
+  getAuthHeaders,
+} from "../lib/api";
+
 type ProtectedRouteProps = {
   children: React.ReactNode;
 };
@@ -14,14 +19,43 @@ export default function ProtectedRoute({
   const [checkingUser, setCheckingUser] = useState(true);
 
   useEffect(() => {
-    const user = localStorage.getItem("user");
+    async function checkUser() {
+      const token = localStorage.getItem("access_token");
 
-    if (!user) {
-      router.replace("/login");
-      return;
+      if (!token) {
+        localStorage.removeItem("user");
+        router.replace("/login");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/me`, {
+          headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+          localStorage.removeItem("user");
+          localStorage.removeItem("access_token");
+          router.replace("/login");
+          return;
+        }
+
+        const user = await response.json();
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify(user)
+        );
+
+        setCheckingUser(false);
+      } catch {
+        localStorage.removeItem("user");
+        localStorage.removeItem("access_token");
+        router.replace("/login");
+      }
     }
 
-    setCheckingUser(false);
+    checkUser();
   }, [router]);
 
   if (checkingUser) {

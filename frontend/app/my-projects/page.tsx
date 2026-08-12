@@ -2,15 +2,28 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   FolderOpen,
   Pencil,
   Trash2,
+  Users,
 } from "lucide-react";
 
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+
+import {
+  API_URL,
+  getAuthHeaders,
+} from "../../lib/api";
+
+type User = {
+  id: number;
+  username: string;
+  email: string;
+};
 
 type Skill = {
   id: number;
@@ -28,27 +41,23 @@ type Project = {
   required_skills: Skill[];
 };
 
-type User = {
-  id: number;
-  username: string;
-  email: string;
-};
-
 export default function MyProjectsPage() {
+  const router = useRouter();
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [deletingId, setDeletingId] = useState<number | null>(
-    null
-  );
+  const [deletingId, setDeletingId] =
+    useState<number | null>(null);
 
   useEffect(() => {
-    async function getMyProjects() {
+    async function loadProjects() {
       const savedUser = localStorage.getItem("user");
+      const token =
+        localStorage.getItem("access_token");
 
-      if (!savedUser) {
-        setError("User information could not be found.");
-        setLoading(false);
+      if (!savedUser || !token) {
+        router.replace("/login");
         return;
       }
 
@@ -56,52 +65,95 @@ export default function MyProjectsPage() {
         const user: User = JSON.parse(savedUser);
 
         const response = await fetch(
-          "http://127.0.0.1:8000/projects"
+          `${API_URL}/projects`,
+          {
+            headers: getAuthHeaders(),
+          }
         );
 
-        if (!response.ok) {
-          throw new Error("Projects could not be loaded.");
+        if (response.status === 401) {
+          localStorage.removeItem("user");
+          localStorage.removeItem("access_token");
+          router.replace("/login");
+          return;
         }
 
-        const data: Project[] = await response.json();
+        if (!response.ok) {
+          throw new Error(
+            "Projects could not be loaded."
+          );
+        }
 
-        const userProjects = data.filter(
+        const data: Project[] =
+          await response.json();
+
+        const myProjects = data.filter(
           (project) => project.owner_id === user.id
         );
 
-        setProjects(userProjects);
-      } catch {
-        setError("Projects could not be loaded.");
+        setProjects(myProjects);
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Projects could not be loaded."
+        );
       } finally {
         setLoading(false);
       }
     }
 
-    getMyProjects();
-  }, []);
+    loadProjects();
+  }, [router]);
 
-  async function deleteProject(projectId: number) {
-    const shouldDelete = window.confirm(
+  async function deleteProject(
+    projectId: number
+  ) {
+    const confirmed = window.confirm(
       "Are you sure you want to delete this project?"
     );
 
-    if (!shouldDelete) {
+    if (!confirmed) {
       return;
     }
 
-    setError("");
+    const token =
+      localStorage.getItem("access_token");
+
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
     setDeletingId(projectId);
+    setError("");
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/projects/${projectId}`,
+        `${API_URL}/projects/${projectId}`,
         {
           method: "DELETE",
+          headers: getAuthHeaders(),
         }
       );
 
+      if (response.status === 401) {
+        localStorage.removeItem("user");
+        localStorage.removeItem("access_token");
+        router.replace("/login");
+        return;
+      }
+
+      if (response.status === 403) {
+        throw new Error(
+          "You are not allowed to delete this project."
+        );
+      }
+
       if (!response.ok) {
-        throw new Error("Project could not be deleted.");
+        throw new Error(
+          "Project could not be deleted."
+        );
       }
 
       setProjects((currentProjects) =>
@@ -109,8 +161,12 @@ export default function MyProjectsPage() {
           (project) => project.id !== projectId
         )
       );
-    } catch {
-      setError("Project could not be deleted.");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Project could not be deleted."
+      );
     } finally {
       setDeletingId(null);
     }
@@ -134,7 +190,7 @@ export default function MyProjectsPage() {
 
               <Link
                 href="/projects/create"
-                className="rounded-lg bg-primary px-4 py-2 text-center text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                className="rounded-lg bg-primary px-4 py-2 text-center font-medium text-primary-foreground hover:bg-primary/90"
               >
                 Create Project
               </Link>
@@ -142,108 +198,123 @@ export default function MyProjectsPage() {
 
             {loading && (
               <p className="mt-8 text-muted-foreground">
-                Loading your projects...
+                Loading projects...
               </p>
             )}
 
             {error && (
-              <p className="mt-8 text-destructive">
+              <p className="mt-8 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
               </p>
             )}
 
-            {!loading && projects.length === 0 && !error && (
-              <section className="mt-8 rounded-xl border border-border bg-card p-6 text-center shadow-sm">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
-                  <FolderOpen className="h-6 w-6 text-secondary-foreground" />
-                </div>
+            {!loading &&
+              !error &&
+              projects.length === 0 && (
+                <section className="mt-8 rounded-xl border border-border bg-card p-8 text-center shadow-sm">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
+                    <FolderOpen className="h-7 w-7 text-secondary-foreground" />
+                  </div>
 
-                <h2 className="mt-4 text-xl font-semibold text-foreground">
-                  You have not created any projects
-                </h2>
+                  <h2 className="mt-4 text-xl font-semibold text-foreground">
+                    You have no projects
+                  </h2>
 
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Create your first project and start building a team.
-                </p>
-              </section>
-            )}
+                  <p className="mt-2 text-muted-foreground">
+                    Create your first project and start
+                    building a team.
+                  </p>
+                </section>
+              )}
 
             {!loading && projects.length > 0 && (
-              <div className="mt-8 grid gap-6 lg:grid-cols-2">
+              <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {projects.map((project) => (
                   <article
                     key={project.id}
-                    className="rounded-xl border border-border bg-card p-6 shadow-sm"
+                    className="flex flex-col rounded-xl border border-border bg-card p-6 shadow-sm"
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-3">
                       <h2 className="text-xl font-semibold text-foreground">
                         {project.title}
                       </h2>
 
-                      <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
+                      <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium capitalize text-secondary-foreground">
                         {project.status}
                       </span>
                     </div>
 
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
                       {project.description}
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {project.required_skills.map((skill) => (
-                        <span
-                          key={skill.id}
-                          className="rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground"
-                        >
-                          {skill.name}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 text-sm">
-                      <p className="text-foreground">
-                        Open positions: {project.open_positions}
-                      </p>
-
-                      {project.application_deadline && (
-                        <p className="mt-1 text-muted-foreground">
-                          Deadline: {project.application_deadline}
-                        </p>
+                      {project.required_skills.map(
+                        (skill) => (
+                          <span
+                            key={skill.id}
+                            className="rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground"
+                          >
+                            {skill.name}
+                          </span>
+                        )
                       )}
                     </div>
 
-                    <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    <p className="mt-4 text-sm text-foreground">
+                      Open positions:{" "}
+                      {project.open_positions}
+                    </p>
+
+                    <div className="mt-auto grid grid-cols-2 gap-2 pt-6">
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className="rounded-lg border border-border px-3 py-2 text-center text-sm font-medium hover:bg-secondary"
+                      >
+                        Details
+                      </Link>
+
+                      <Link
+                        href={`/projects/${project.id}/edit`}
+                        className="flex items-center justify-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </Link>
+
                       <Link
                         href={`/projects/${project.id}/applications`}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                        className="flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-secondary"
                       >
                         <FileText className="h-4 w-4" />
                         Applications
                       </Link>
 
                       <Link
-                        href={`/projects/${project.id}/edit`}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                        href={`/projects/${project.id}/team`}
+                        className="flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-secondary"
                       >
-                        <Pencil className="h-4 w-4" />
-                        Edit
+                        <Users className="h-4 w-4" />
+                        Team
                       </Link>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          deleteProject(project.id)
-                        }
-                        disabled={deletingId === project.id}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-destructive px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-
-                        {deletingId === project.id
-                          ? "Deleting..."
-                          : "Delete"}
-                      </button>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        deleteProject(project.id)
+                      }
+                      disabled={
+                        deletingId === project.id
+                      }
+                      className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-destructive px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+
+                      {deletingId === project.id
+                        ? "Deleting..."
+                        : "Delete"}
+                    </button>
                   </article>
                 ))}
               </div>

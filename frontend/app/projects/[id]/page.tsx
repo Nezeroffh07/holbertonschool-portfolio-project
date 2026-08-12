@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { useParams } from "next/navigation";
-import { API_URL } from "@/lib/api";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Calendar,
@@ -13,6 +12,10 @@ import {
 
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import {
+  API_URL,
+  getAuthHeaders,
+} from "../../../lib/api";
 
 type Skill = {
   id: number;
@@ -44,6 +47,7 @@ type Application = {
 
 export default function ProjectDetailsPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
 
   const [project, setProject] = useState<Project | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(
@@ -75,7 +79,8 @@ export default function ProjectDetailsPage() {
     async function getProject() {
       try {
         const response = await fetch(
-          `${API_URL}/projects/${params.id}`
+          `${API_URL}/projects/${params.id}`,
+          { headers: getAuthHeaders() }
         );
 
         if (!response.ok) {
@@ -97,8 +102,10 @@ export default function ProjectDetailsPage() {
   useEffect(() => {
     async function checkUserApplication() {
       const savedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("access_token");
 
-      if (!savedUser) {
+      if (!savedUser || !token) {
+        router.replace("/login");
         return;
       }
 
@@ -107,8 +114,16 @@ export default function ProjectDetailsPage() {
 
       try {
         const response = await fetch(
-          `${API_URL}/users/${user.id}/applications`
+          `${API_URL}/users/${user.id}/applications`,
+          { headers: getAuthHeaders() }
         );
+
+        if (response.status === 401) {
+          localStorage.removeItem("user");
+          localStorage.removeItem("access_token");
+          router.replace("/login");
+          return;
+        }
 
         if (!response.ok) {
           return;
@@ -133,7 +148,7 @@ export default function ProjectDetailsPage() {
     }
 
     checkUserApplication();
-  }, [params.id]);
+  }, [params.id, router]);
 
   async function applyToProject(
     event: FormEvent<HTMLFormElement>
@@ -160,7 +175,6 @@ export default function ProjectDetailsPage() {
     setApplicationLoading(true);
 
     const applicationData = {
-      applicant_id: currentUser.id,
       message: applicationMessage,
     };
 
@@ -169,16 +183,25 @@ export default function ProjectDetailsPage() {
         `${API_URL}/projects/${project.id}/apply`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify(applicationData),
         }
       );
 
+      const data = await response.json().catch(() => null);
+
+      if (response.status === 401) {
+        localStorage.removeItem("user");
+        localStorage.removeItem("access_token");
+        router.replace("/login");
+        return;
+      }
+
       if (!response.ok) {
         setApplicationError(
-          "You cannot apply to this project or you have already applied."
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Application could not be submitted."
         );
         return;
       }

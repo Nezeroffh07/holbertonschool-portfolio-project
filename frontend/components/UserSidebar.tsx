@@ -87,6 +87,7 @@ export default function UserSidebar() {
 
   function logout() {
     localStorage.removeItem("user");
+    localStorage.removeItem("access_token");
     window.location.href = "/";
   }
 

@@ -15,6 +15,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import {
+  API_URL,
+  getAuthHeaders,
+} from "../../../../lib/api";
+
 type User = {
   id: number;
   username: string;
@@ -50,19 +55,15 @@ const projectSchema = z.object({
 
   openPositions: z
     .string()
-    .min(1, "Open positions is required.")
-    .refine(
-      (value) => {
-        const numberValue = Number(value);
+    .refine((value) => {
+      const numberValue = Number(value);
 
-        return (
-          Number.isInteger(numberValue) &&
-          numberValue >= 1 &&
-          numberValue <= 50
-        );
-      },
-      "Open positions must be between 1 and 50."
-    ),
+      return (
+        Number.isInteger(numberValue) &&
+        numberValue >= 1 &&
+        numberValue <= 50
+      );
+    }, "Open positions must be between 1 and 50."),
 
   applicationDeadline: z.string(),
 
@@ -78,19 +79,21 @@ const projectSchema = z.object({
     .min(1, "Select at least one skill."),
 });
 
-type ProjectFormData = z.infer<typeof projectSchema>;
+type ProjectFormData = z.infer<
+  typeof projectSchema
+>;
 
 export default function EditProjectPage() {
   const params = useParams();
   const router = useRouter();
-
   const projectId = String(params.id);
 
   const [skills, setSkills] = useState<Skill[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [pageError, setPageError] = useState("");
   const [submitError, setSubmitError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [successMessage, setSuccessMessage] =
+    useState("");
 
   const {
     register,
@@ -100,7 +103,8 @@ export default function EditProjectPage() {
   } = useForm<ProjectFormData>({
     resolver: zodResolver(
       projectSchema
-    ) as Resolver<ProjectFormData> ,
+    ) as Resolver<ProjectFormData>,
+
     defaultValues: {
       title: "",
       description: "",
@@ -113,11 +117,14 @@ export default function EditProjectPage() {
 
   useEffect(() => {
     async function loadProject() {
-      const savedUser = localStorage.getItem("user");
+      const savedUser =
+        localStorage.getItem("user");
 
-      if (!savedUser) {
-        setPageError("User information could not be found.");
-        setPageLoading(false);
+      const token =
+        localStorage.getItem("access_token");
+
+      if (!savedUser || !token) {
+        router.replace("/login");
         return;
       }
 
@@ -127,17 +134,34 @@ export default function EditProjectPage() {
         const [projectResponse, skillsResponse] =
           await Promise.all([
             fetch(
-              `http://127.0.0.1:8000/projects/${projectId}`
+              `${API_URL}/projects/${projectId}`,
+              {
+                headers: getAuthHeaders(),
+              }
             ),
-            fetch("http://127.0.0.1:8000/skills"),
+
+            fetch(`${API_URL}/skills`, {
+              headers: getAuthHeaders(),
+            }),
           ]);
 
+        if (projectResponse.status === 401) {
+          localStorage.removeItem("user");
+          localStorage.removeItem("access_token");
+          router.replace("/login");
+          return;
+        }
+
         if (!projectResponse.ok) {
-          throw new Error("Project could not be loaded.");
+          throw new Error(
+            "Project could not be loaded."
+          );
         }
 
         if (!skillsResponse.ok) {
-          throw new Error("Skills could not be loaded.");
+          throw new Error(
+            "Skills could not be loaded."
+          );
         }
 
         const project: Project =
@@ -155,7 +179,9 @@ export default function EditProjectPage() {
 
         const sortedSkills = [...skillsData].sort(
           (firstSkill, secondSkill) =>
-            firstSkill.name.localeCompare(secondSkill.name)
+            firstSkill.name.localeCompare(
+              secondSkill.name
+            )
         );
 
         setSkills(sortedSkills);
@@ -163,33 +189,45 @@ export default function EditProjectPage() {
         reset({
           title: project.title,
           description: project.description,
-          openPositions: String(project.open_positions),
+          openPositions: String(
+            project.open_positions
+          ),
           applicationDeadline:
-            project.application_deadline?.slice(0, 10) || "",
+            project.application_deadline?.slice(
+              0,
+              10
+            ) || "",
           status:
-            project.status === "closed" ? "closed" : "open",
-          skillIds: project.required_skills.map((skill) =>
-            String(skill.id)
+            project.status === "closed"
+              ? "closed"
+              : "open",
+          skillIds: project.required_skills.map(
+            (skill) => String(skill.id)
           ),
         });
       } catch {
-        setPageError("Project information could not be loaded.");
+        setPageError(
+          "Project information could not be loaded."
+        );
       } finally {
         setPageLoading(false);
       }
     }
 
     loadProject();
-  }, [projectId, reset]);
+  }, [projectId, reset, router]);
 
-  async function updateProject(formData: ProjectFormData) {
+  async function updateProject(
+    formData: ProjectFormData
+  ) {
     setSubmitError("");
     setSuccessMessage("");
 
-    const savedUser = localStorage.getItem("user");
+    const token =
+      localStorage.getItem("access_token");
 
-    if (!savedUser) {
-      setSubmitError("User information could not be found.");
+    if (!token) {
+      router.replace("/login");
       return;
     }
 
@@ -197,47 +235,57 @@ export default function EditProjectPage() {
       const projectData = {
         title: formData.title,
         description: formData.description,
-        open_positions: Number(formData.openPositions),
+        open_positions: Number(
+          formData.openPositions
+        ),
         application_deadline:
           formData.applicationDeadline || null,
         status: formData.status,
-        required_skill_ids: formData.skillIds.map(Number),
+        required_skill_ids:
+          formData.skillIds.map(Number),
       };
 
       const response = await fetch(
-        `http://127.0.0.1:8000/projects/${projectId}`,
+        `${API_URL}/projects/${projectId}`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify(projectData),
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => null);
+      const data = await response
+        .json()
+        .catch(() => null);
 
-        if (typeof errorData?.detail === "string") {
-          throw new Error(errorData.detail);
-        }
-
-        throw new Error("Project could not be updated.");
+      if (response.status === 401) {
+        localStorage.removeItem("user");
+        localStorage.removeItem("access_token");
+        router.replace("/login");
+        return;
       }
 
-      setSuccessMessage("Project updated successfully.");
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.detail === "string"
+            ? data.detail
+            : "Project could not be updated."
+        );
+      }
+
+      setSuccessMessage(
+        "Project updated successfully."
+      );
 
       setTimeout(() => {
         router.push(`/projects/${projectId}`);
       }, 800);
     } catch (error) {
-      if (error instanceof Error) {
-        setSubmitError(error.message);
-      } else {
-        setSubmitError("Project could not be updated.");
-      }
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Project could not be updated."
+      );
     }
   }
 
@@ -249,7 +297,9 @@ export default function EditProjectPage() {
             <button
               type="button"
               onClick={() =>
-                router.push(`/projects/${projectId}`)
+                router.push(
+                  `/projects/${projectId}`
+                )
               }
               className="text-sm font-medium text-primary hover:underline"
             >
@@ -278,7 +328,9 @@ export default function EditProjectPage() {
 
             {!pageLoading && !pageError && (
               <form
-                onSubmit={handleSubmit(updateProject)}
+                onSubmit={handleSubmit(
+                  updateProject
+                )}
                 className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm"
                 noValidate
               >
@@ -289,8 +341,6 @@ export default function EditProjectPage() {
 
                   <Input
                     id="title"
-                    type="text"
-                    placeholder="Enter the project title"
                     {...register("title")}
                   />
 
@@ -309,8 +359,7 @@ export default function EditProjectPage() {
                   <textarea
                     id="description"
                     rows={6}
-                    placeholder="Describe your project"
-                    className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/30"
                     {...register("description")}
                   />
 
@@ -337,9 +386,7 @@ export default function EditProjectPage() {
                           {...register("skillIds")}
                         />
 
-                        <span className="text-sm text-foreground">
-                          {skill.name}
-                        </span>
+                        <span>{skill.name}</span>
                       </label>
                     ))}
                   </div>
@@ -362,12 +409,17 @@ export default function EditProjectPage() {
                       type="number"
                       min="1"
                       max="50"
-                      {...register("openPositions")}
+                      {...register(
+                        "openPositions"
+                      )}
                     />
 
                     {errors.openPositions && (
                       <p className="text-sm text-destructive">
-                        {errors.openPositions.message}
+                        {
+                          errors.openPositions
+                            .message
+                        }
                       </p>
                     )}
                   </div>
@@ -380,14 +432,10 @@ export default function EditProjectPage() {
                     <Input
                       id="applicationDeadline"
                       type="date"
-                      {...register("applicationDeadline")}
+                      {...register(
+                        "applicationDeadline"
+                      )}
                     />
-
-                    {errors.applicationDeadline && (
-                      <p className="text-sm text-destructive">
-                        {errors.applicationDeadline.message}
-                      </p>
-                    )}
                   </div>
                 </div>
 
@@ -398,18 +446,17 @@ export default function EditProjectPage() {
 
                   <select
                     id="status"
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none"
                     {...register("status")}
                   >
-                    <option value="open">Open</option>
-                    <option value="closed">Closed</option>
-                  </select>
+                    <option value="open">
+                      Open
+                    </option>
 
-                  {errors.status && (
-                    <p className="text-sm text-destructive">
-                      {errors.status.message}
-                    </p>
-                  )}
+                    <option value="closed">
+                      Closed
+                    </option>
+                  </select>
                 </div>
 
                 {submitError && (
@@ -429,7 +476,9 @@ export default function EditProjectPage() {
                     type="button"
                     variant="outline"
                     onClick={() =>
-                      router.push(`/projects/${projectId}`)
+                      router.push(
+                        `/projects/${projectId}`
+                      )
                     }
                   >
                     Cancel
