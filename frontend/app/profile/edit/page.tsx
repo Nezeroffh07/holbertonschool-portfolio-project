@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { API_URL } from "@/lib/api";
+import { API_URL, getAuthHeaders } from "@/lib/api";
+
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
@@ -39,18 +40,14 @@ const profileSchema = z.object({
     .min(2, "Full name must contain at least 2 characters.")
     .max(100, "Full name is too long."),
 
-  university: z
-    .string()
-    .min(2, "University is required."),
+  university: z.string().min(2, "University is required."),
 
   faculty: z
     .string()
     .min(2, "Faculty is required.")
     .max(150, "Faculty name is too long."),
 
-  bio: z
-    .string()
-    .max(1000, "Bio cannot exceed 1000 characters."),
+  bio: z.string().max(1000, "Bio cannot exceed 1000 characters."),
 
   portfolioUrl: z
     .string()
@@ -62,9 +59,7 @@ const profileSchema = z.object({
       "Enter a valid portfolio URL."
     ),
 
-  skillIds: z
-    .array(z.string())
-    .min(1, "Select at least one skill."),
+  skillIds: z.array(z.string()).min(1, "Select at least one skill."),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -106,37 +101,30 @@ export default function EditProfilePage() {
       try {
         const user: User = JSON.parse(savedUser);
 
-        const skillsResponse = await fetch(
-          `${API_URL}/skills`
-        );
+        const skillsResponse = await fetch(`${API_URL}/skills`);
 
         if (!skillsResponse.ok) {
           throw new Error("Skills could not be loaded.");
         }
 
-        const skillsData: Skill[] =
-          await skillsResponse.json();
-
+        const skillsData: Skill[] = await skillsResponse.json();
         setSkills(skillsData);
 
         const profileResponse = await fetch(
-          `${API_URL}/users/${user.id}/profile`
+          `${API_URL}/users/${user.id}/profile`,
+          { headers: getAuthHeaders() }
         );
 
         if (profileResponse.ok) {
-          const profile: Profile =
-            await profileResponse.json();
+          const profile: Profile = await profileResponse.json();
 
           reset({
             fullName: profile.full_name || "",
-            university:
-              profile.university || "Karabakh University",
+            university: profile.university || "Karabakh University",
             faculty: profile.faculty || "",
             bio: profile.bio || "",
             portfolioUrl: profile.portfolio_url || "",
-            skillIds: profile.skills.map((skill) =>
-              String(skill.id)
-            ),
+            skillIds: profile.skills.map((skill) => String(skill.id)),
           });
         } else if (profileResponse.status !== 404) {
           throw new Error("Profile could not be loaded.");
@@ -174,16 +162,11 @@ export default function EditProfilePage() {
         skill_ids: formData.skillIds.map(Number),
       };
 
-      const response = await fetch(
-        `${API_URL}/users/${user.id}/profile`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(profileData),
-        }
-      );
+      const response = await fetch(`${API_URL}/users/${user.id}/profile`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(profileData),
+      });
 
       if (!response.ok) {
         throw new Error("Profile could not be saved.");
@@ -215,9 +198,7 @@ export default function EditProfilePage() {
             )}
 
             {pageError && (
-              <p className="mt-8 text-destructive">
-                {pageError}
-              </p>
+              <p className="mt-8 text-destructive">{pageError}</p>
             )}
 
             {!pageLoading && !pageError && (
@@ -227,9 +208,7 @@ export default function EditProfilePage() {
                 noValidate
               >
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">
-                    Full Name
-                  </Label>
+                  <Label htmlFor="fullName">Full Name</Label>
 
                   <Input
                     id="fullName"
@@ -248,9 +227,7 @@ export default function EditProfilePage() {
 
                 <div className="mt-6 grid gap-6 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="university">
-                      University
-                    </Label>
+                    <Label htmlFor="university">University</Label>
 
                     <Input
                       id="university"
@@ -261,17 +238,13 @@ export default function EditProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="faculty">
-                      Faculty
-                    </Label>
+                    <Label htmlFor="faculty">Faculty</Label>
 
                     <Input
                       id="faculty"
                       type="text"
                       placeholder="Enter your faculty"
-                      aria-invalid={
-                        errors.faculty ? true : false
-                      }
+                      aria-invalid={errors.faculty ? true : false}
                       {...register("faculty")}
                     />
 
@@ -284,9 +257,7 @@ export default function EditProfilePage() {
                 </div>
 
                 <div className="mt-6 space-y-2">
-                  <Label htmlFor="bio">
-                    About Me
-                  </Label>
+                  <Label htmlFor="bio">About Me</Label>
 
                   <textarea
                     id="bio"
@@ -304,17 +275,13 @@ export default function EditProfilePage() {
                 </div>
 
                 <div className="mt-6 space-y-2">
-                  <Label htmlFor="portfolioUrl">
-                    Portfolio URL
-                  </Label>
+                  <Label htmlFor="portfolioUrl">Portfolio URL</Label>
 
                   <Input
                     id="portfolioUrl"
                     type="url"
                     placeholder="https://your-portfolio.com"
-                    aria-invalid={
-                      errors.portfolioUrl ? true : false
-                    }
+                    aria-invalid={errors.portfolioUrl ? true : false}
                     {...register("portfolioUrl")}
                   />
 
@@ -368,13 +335,8 @@ export default function EditProfilePage() {
                 )}
 
                 <div className="mt-8 flex justify-end">
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting
-                      ? "Saving..."
-                      : "Save Profile"}
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Saving..." : "Save Profile"}
                   </Button>
                 </div>
               </form>
