@@ -1,16 +1,20 @@
 """
 Profile endpoint-ləri.
 
-Hər User-in yalnz bir Profile-i ola bilər (1-1 əlaqə).
-PUT /users/{user_id}/profile — profil yoxdursa yaradr, varsa yeniləyir
-(upsert). Bu, frontend üçün sadələşdirmə edir: ayrca "create" və
-"update" məntiqi ilə uğraşmağa ehtiyac qalmr.
+Hər User-in yalnız bir Profile-i ola bilər (1-1 əlaqə).
+PUT /users/{user_id}/profile — profil yoxdursa yaradır, varsa yeniləyir
+(upsert). Bu, frontend üçün sadələşdirmə edir: ayrıca "create" və
+"update" məntiqi ilə uğraşmağa ehtiyac qalmır.
+
+Sprint 4 qeydi: profil dəyişikliyi indi HƏMİŞƏ token tələb edir (əvvəlki
+"keçid dövrü" sadələşdirməsi bağlandı, çünki frontend artıq hər yerdə
+token göndərir).
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user_optional, require_ownership
+from app.dependencies import get_current_user, require_ownership
 from app import models, schemas
 
 router = APIRouter(prefix="/users/{user_id}/profile", tags=["Profile"])
@@ -55,7 +59,7 @@ def get_profile(user_id: int, db: Session = Depends(get_db)):
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bu istifadəçi hələ profil yaratmayb",
+            detail="Bu istifadəçi hələ profil yaratmayıb",
         )
     return profile
 
@@ -64,21 +68,20 @@ def get_profile(user_id: int, db: Session = Depends(get_db)):
     "",
     response_model=schemas.ProfileResponse,
     summary="Profili yarat və ya yenilə (upsert)",
+    description="Token tələb olunur — yalnız öz profilinizi dəyişə bilərsiniz.",
 )
 def upsert_profile(
     user_id: int,
     payload: schemas.ProfileUpsert,
     db: Session = Depends(get_db),
-    token_user: models.User | None = Depends(get_current_user_optional),
+    token_user: models.User = Depends(get_current_user),
 ):
     _get_user_or_404(user_id, db)
 
-    # Token varsa, yalnız öz profilini dəyişməyə icazə verilir
-    if token_user is not None:
-        require_ownership(
-            token_user.id, user_id,
-            "Yalnız öz profilinizi dəyişə bilərsiniz",
-        )
+    require_ownership(
+        token_user.id, user_id,
+        "Yalnız öz profilinizi dəyişə bilərsiniz",
+    )
 
     skills = _get_skills_or_400(payload.skill_ids, db)
 
