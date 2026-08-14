@@ -3,13 +3,18 @@ Skill endpoint-ləri.
 
 Skill-lər həm Profile (istifadəçinin bacarıqları), həm də Project
 (tələb olunan bacarıqlar) tərəfindən istifadə olunan ortaq bir siyahıdır.
-Frontend adətən əvvəlcə GET /skills ilə mövcud siyahını çəkib dropdown
-göstərəcək, tapılmayan bacarıq üçün POST /skills ilə yenisini yaradacaq.
+Frontend GET /skills ilə mövcud siyahını çəkib dropdown göstərir.
+
+Sprint 4 qeydi: POST /skills yalnız admin üçündür — bacarıq siyahısının
+təkrarlanmış/nizamsız yazılışlarla (məs. "React" və "react.js" ayrı-ayrı
+sətir kimi) dolmasının qarşısını almaq üçün, komanda mərkəzləşdirilmiş
+şəkildə idarə edir.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies import require_admin
 from app import models, schemas
 
 router = APIRouter(prefix="/skills", tags=["Skills"])
@@ -28,9 +33,14 @@ def list_skills(db: Session = Depends(get_db)):
     "",
     response_model=schemas.SkillResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Yeni bacarıq yarat",
+    summary="Yeni bacarıq yarat (yalnız admin)",
+    description="Bacarıq siyahısının nizamlı qalması üçün yalnız admin yeni bacarıq əlavə edə bilər.",
 )
-def create_skill(skill: schemas.SkillCreate, db: Session = Depends(get_db)):
+def create_skill(
+    skill: schemas.SkillCreate,
+    db: Session = Depends(get_db),
+    _admin: models.User = Depends(require_admin),
+):
     normalized = skill.name.strip()
     existing = (
         db.query(models.Skill)
