@@ -50,6 +50,12 @@ def invite_user_to_project(
         "Yalnız layihə sahibi dəvət göndərə bilər",
     )
 
+    if project.status != "open":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bu layihə artıq yeni üzv və ya dəvət qəbul etmir",
+        )
+
     invited_user = (
         db.query(models.User)
         .filter(models.User.id == payload.invited_user_id)
@@ -65,6 +71,22 @@ def invite_user_to_project(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Özünüzü öz layihənizə dəvət edə bilməzsiniz",
+        )
+
+    # Artıq komandada olan istifadəçini yenidən dəvət etməyin qarşısını alırıq
+    already_member = (
+        db.query(models.Application)
+        .filter(
+            models.Application.project_id == project_id,
+            models.Application.applicant_id == payload.invited_user_id,
+            models.Application.status == "accepted",
+        )
+        .first()
+    )
+    if already_member:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bu istifadəçi artıq bu layihənin komanda üzvüdür",
         )
 
     invitation = models.Invitation(
@@ -152,7 +174,71 @@ def update_invitation_status(
             ),
         )
 
-    invitation.status = payload.status
-    db.commit()
+    project = invitation.project
+
+    if payload.status == "accepted":
+        if project.status != "open":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bu layihə artıq yeni komanda üzvü qəbul etmir",
+            )
+
+        # Komandadakı mövcud qəbul olunmuş üzv sayını yoxlayırıq
+        accepted_count = (
+            db.query(models.Application)
+            .filter(
+                models.Application.project_id == project.id,
+                models.Application.status == "accepted",
+            )
+            .count()
+        )
+        if accepted_count >= project.open_positions:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Layihədə boş mövqe qalmayıb",
+            )
+
+        # Əgər əvvəlcədən Application sətiri varsa yeniləyirik, yoxdursa yaradırıq (TeamMember)
+        application = (
+            db.query(models.Application)
+            .filter(
+                models.Application.project_id == invitation.project_id,
+                models.Application.applicant_id == invitation.invited_user_id,
+            )
+            .first()
+        )
+        if application:
+            application.status = "accepted"
+            if invitation.role:
+                application.role = invitation.role
+        else:
+            application = models.Application(
+                project_id=invitation.project_id,
+                applicant_id=invitation.invited_user_id,
+                message=invitation.message or "Dəvət qəbul edildi",
+                status="accepted",
+                role=invitation.role,
+            )
+            db.add(application)
+
+        invitation.status = "accepted"
+        db.commit()
+
+        # Boş yer dolubsa layihəni avtomatik bağlayırıq
+        new_accepted_count = (
+            db.query(models.Application)
+            .filter(
+                models.Application.project_id == project.id,
+                models.Application.status == "accepted",
+            )
+            .count()
+        )
+        if new_accepted_count >= project.open_positions:
+            project.status = "closed"
+            db.commit()
+    else:
+        invitation.status = payload.status
+        db.commit()
+
     db.refresh(invitation)
     return invitation
