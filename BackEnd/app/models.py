@@ -100,6 +100,9 @@ class Profile(Base):
     # maraq sahələri və əvvəlki layihələr
     interests = Column(Text, nullable=True)
     previous_projects = Column(Text, nullable=True)
+    # TUP Community kataloqunda görünsün, yoxsa yox — default olaraq
+    # görünür, istəyən bunu profilindən söndürə bilər.
+    is_public = Column(Boolean, nullable=False, default=True)
 
     user = relationship("User", back_populates="profile")
     skills = relationship("Skill", secondary=profile_skills)
