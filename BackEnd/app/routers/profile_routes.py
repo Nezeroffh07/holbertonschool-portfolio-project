@@ -102,6 +102,7 @@ def upsert_profile(
     profile.avatar_url = payload.avatar_url
     profile.interests = payload.interests
     profile.previous_projects = payload.previous_projects
+    profile.is_public = payload.is_public
     profile.skills = skills
 
     db.commit()
