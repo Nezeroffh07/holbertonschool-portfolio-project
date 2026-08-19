@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import UserSidebar from "@/components/UserSidebar";
+import Footer from "@/components/Footer";
 
 type AuthenticatedLayoutProps = {
   children: React.ReactNode;
@@ -12,10 +13,12 @@ export default function AuthenticatedLayout({
     <div className="min-h-screen bg-background md:flex">
       <UserSidebar />
 
-      <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Navbar hideBrand />
 
-        {children}
+        <div className="flex-1">{children}</div>
+
+        <Footer />
       </div>
     </div>
   );
