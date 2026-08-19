@@ -91,6 +91,10 @@ export default function CreateProjectPage() {
         }
 
         const data: Skill[] = await response.json();
+        const validSkills = data.filter(
+          (skill)=>
+            skill.name.trim().toLowerCase() !== "string"
+        );
         setSkills(data);
       } catch {
         setSkillsError("Skills could not be loaded.");

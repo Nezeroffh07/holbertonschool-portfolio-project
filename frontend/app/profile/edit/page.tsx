@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { API_URL, getAuthHeaders } from "@/lib/api";
 
+import { API_URL, getAuthHeaders } from "@/lib/api";
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,9 @@ type Profile = {
   faculty: string | null;
   bio: string | null;
   portfolio_url: string | null;
+  avatar_url: string | null;
+  interests: string | null;
+  previous_projects: string | null;
   skills: Skill[];
 };
 
@@ -40,26 +43,49 @@ const profileSchema = z.object({
     .min(2, "Full name must contain at least 2 characters.")
     .max(100, "Full name is too long."),
 
-  university: z.string().min(2, "University is required."),
+  university: z
+    .string()
+    .min(2, "University is required."),
 
   faculty: z
     .string()
     .min(2, "Faculty is required.")
     .max(150, "Faculty name is too long."),
 
-  bio: z.string().max(1000, "Bio cannot exceed 1000 characters."),
-
-  portfolioUrl: z
+  bio: z
     .string()
-    .refine(
-      (value) =>
-        value === "" ||
-        value.startsWith("http://") ||
-        value.startsWith("https://"),
-      "Enter a valid portfolio URL."
+    .max(1000, "Bio cannot exceed 1000 characters."),
+
+  portfolioUrl: z.string().refine(
+    (value) =>
+      value === "" ||
+      value.startsWith("http://") ||
+      value.startsWith("https://"),
+    "Enter a valid portfolio URL."
+  ),
+
+  avatarUrl: z.string().refine(
+    (value) =>
+      value === "" ||
+      value.startsWith("http://") ||
+      value.startsWith("https://"),
+    "Enter a valid image URL."
+  ),
+
+  interests: z
+    .string()
+    .max(500, "Interests cannot exceed 500 characters."),
+
+  previousProjects: z
+    .string()
+    .max(
+      1500,
+      "Previous projects cannot exceed 1500 characters."
     ),
 
-  skillIds: z.array(z.string()).min(1, "Select at least one skill."),
+  skillIds: z
+    .array(z.string())
+    .min(1, "Select at least one skill."),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -75,62 +101,107 @@ export default function EditProfilePage() {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: {
+      errors,
+      isSubmitting,
+    },
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
+
     defaultValues: {
       fullName: "",
       university: "Karabakh University",
       faculty: "",
       bio: "",
       portfolioUrl: "",
+      avatarUrl: "",
+      interests: "",
+      previousProjects: "",
       skillIds: [],
     },
   });
 
   useEffect(() => {
     async function loadProfile() {
-      const savedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("access_token");
 
-      if (!savedUser) {
-        setPageError("User information could not be found.");
+      if (!token) {
+        setPageError("Please log in to edit your profile.");
         setPageLoading(false);
         return;
       }
 
       try {
-        const user: User = JSON.parse(savedUser);
+        const userResponse = await fetch(`${API_URL}/me`, {
+          headers: getAuthHeaders(),
+        });
 
-        const skillsResponse = await fetch(`${API_URL}/skills`);
+        if (!userResponse.ok) {
+          throw new Error(
+            "User information could not be loaded."
+          );
+        }
+
+        const user: User = await userResponse.json();
+
+        const skillsResponse = await fetch(
+          `${API_URL}/skills`,
+          {
+            headers: getAuthHeaders(),
+          }
+        );
 
         if (!skillsResponse.ok) {
           throw new Error("Skills could not be loaded.");
         }
 
-        const skillsData: Skill[] = await skillsResponse.json();
-        setSkills(skillsData);
+        const skillsData: Skill[] =
+          await skillsResponse.json();
+
+        const validSkills = skillsData.filter(
+          (skill) =>
+            skill.name.trim().toLowerCase() !== "string"
+        );
+
+        setSkills(validSkills);
 
         const profileResponse = await fetch(
           `${API_URL}/users/${user.id}/profile`,
-          { headers: getAuthHeaders() }
+          {
+            headers: getAuthHeaders(),
+          }
         );
 
         if (profileResponse.ok) {
-          const profile: Profile = await profileResponse.json();
+          const profile: Profile =
+            await profileResponse.json();
 
           reset({
             fullName: profile.full_name || "",
-            university: profile.university || "Karabakh University",
+            university:
+              profile.university || "Karabakh University",
             faculty: profile.faculty || "",
             bio: profile.bio || "",
             portfolioUrl: profile.portfolio_url || "",
-            skillIds: profile.skills.map((skill) => String(skill.id)),
+            avatarUrl: profile.avatar_url || "",
+            interests: profile.interests || "",
+            previousProjects:
+              profile.previous_projects || "",
+            skillIds: profile.skills.map((skill) =>
+              String(skill.id)
+            ),
           });
         } else if (profileResponse.status !== 404) {
-          throw new Error("Profile could not be loaded.");
+          throw new Error(
+            "Profile could not be loaded."
+          );
         }
-      } catch {
-        setPageError("Profile information could not be loaded.");
+      } catch (error) {
+        setPageError(
+          error instanceof Error
+            ? error.message
+            : "Profile information could not be loaded."
+        );
       } finally {
         setPageLoading(false);
       }
@@ -139,42 +210,71 @@ export default function EditProfilePage() {
     loadProfile();
   }, [reset]);
 
-  async function saveProfile(formData: ProfileFormData) {
+  async function saveProfile(
+    formData: ProfileFormData
+  ) {
     setSubmitError("");
     setSuccessMessage("");
 
-    const savedUser = localStorage.getItem("user");
-
-    if (!savedUser) {
-      setSubmitError("User information could not be found.");
-      return;
-    }
-
     try {
-      const user: User = JSON.parse(savedUser);
+      const userResponse = await fetch(`${API_URL}/me`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!userResponse.ok) {
+        throw new Error(
+          "User information could not be loaded."
+        );
+      }
+
+      const user: User = await userResponse.json();
 
       const profileData = {
         full_name: formData.fullName,
         university: formData.university,
         faculty: formData.faculty,
-        bio: formData.bio || null,
-        portfolio_url: formData.portfolioUrl || null,
+        bio: formData.bio.trim() || null,
+        portfolio_url:
+          formData.portfolioUrl.trim() || null,
+        avatar_url:
+          formData.avatarUrl.trim() || null,
+        interests:
+          formData.interests.trim() || null,
+        previous_projects:
+          formData.previousProjects.trim() || null,
         skill_ids: formData.skillIds.map(Number),
       };
 
-      const response = await fetch(`${API_URL}/users/${user.id}/profile`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(profileData),
-      });
+      const response = await fetch(
+        `${API_URL}/users/${user.id}/profile`,
+        {
+          method: "PUT",
+          headers: getAuthHeaders(),
+          body: JSON.stringify(profileData),
+        }
+      );
+
+      const responseData = await response
+        .json()
+        .catch(() => null);
 
       if (!response.ok) {
-        throw new Error("Profile could not be saved.");
+        throw new Error(
+          typeof responseData?.detail === "string"
+            ? responseData.detail
+            : "Profile could not be saved."
+        );
       }
 
-      setSuccessMessage("Profile saved successfully.");
-    } catch {
-      setSubmitError("Profile could not be saved.");
+      setSuccessMessage(
+        "Profile saved successfully."
+      );
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Profile could not be saved."
+      );
     }
   }
 
@@ -188,7 +288,8 @@ export default function EditProfilePage() {
             </h1>
 
             <p className="mt-2 text-muted-foreground">
-              Add information about yourself and your skills.
+              Add information about yourself, your interests
+              and your experience.
             </p>
 
             {pageLoading && (
@@ -198,7 +299,9 @@ export default function EditProfilePage() {
             )}
 
             {pageError && (
-              <p className="mt-8 text-destructive">{pageError}</p>
+              <p className="mt-8 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive">
+                {pageError}
+              </p>
             )}
 
             {!pageLoading && !pageError && (
@@ -208,13 +311,15 @@ export default function EditProfilePage() {
                 noValidate
               >
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
+                  <Label htmlFor="fullName">
+                    Full Name
+                  </Label>
 
                   <Input
                     id="fullName"
                     type="text"
                     placeholder="Enter your full name"
-                    aria-invalid={errors.fullName ? true : false}
+                    aria-invalid={Boolean(errors.fullName)}
                     {...register("fullName")}
                   />
 
@@ -227,7 +332,9 @@ export default function EditProfilePage() {
 
                 <div className="mt-6 grid gap-6 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="university">University</Label>
+                    <Label htmlFor="university">
+                      University
+                    </Label>
 
                     <Input
                       id="university"
@@ -238,13 +345,15 @@ export default function EditProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="faculty">Faculty</Label>
+                    <Label htmlFor="faculty">
+                      Faculty
+                    </Label>
 
                     <Input
                       id="faculty"
                       type="text"
                       placeholder="Enter your faculty"
-                      aria-invalid={errors.faculty ? true : false}
+                      aria-invalid={Boolean(errors.faculty)}
                       {...register("faculty")}
                     />
 
@@ -257,7 +366,34 @@ export default function EditProfilePage() {
                 </div>
 
                 <div className="mt-6 space-y-2">
-                  <Label htmlFor="bio">About Me</Label>
+                  <Label htmlFor="avatarUrl">
+                    Avatar URL
+                  </Label>
+
+                  <Input
+                    id="avatarUrl"
+                    type="url"
+                    placeholder="https://example.com/photo.jpg"
+                    aria-invalid={Boolean(errors.avatarUrl)}
+                    {...register("avatarUrl")}
+                  />
+
+                  <p className="text-xs text-muted-foreground">
+                    Enter a direct public link to your profile
+                    image.
+                  </p>
+
+                  {errors.avatarUrl && (
+                    <p className="text-sm text-destructive">
+                      {errors.avatarUrl.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-6 space-y-2">
+                  <Label htmlFor="bio">
+                    About Me
+                  </Label>
 
                   <textarea
                     id="bio"
@@ -275,13 +411,57 @@ export default function EditProfilePage() {
                 </div>
 
                 <div className="mt-6 space-y-2">
-                  <Label htmlFor="portfolioUrl">Portfolio URL</Label>
+                  <Label htmlFor="interests">
+                    Interests
+                  </Label>
+
+                  <textarea
+                    id="interests"
+                    rows={3}
+                    placeholder="Artificial intelligence, web development, startups"
+                    className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    {...register("interests")}
+                  />
+
+                  {errors.interests && (
+                    <p className="text-sm text-destructive">
+                      {errors.interests.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-6 space-y-2">
+                  <Label htmlFor="previousProjects">
+                    Previous Projects
+                  </Label>
+
+                  <textarea
+                    id="previousProjects"
+                    rows={4}
+                    placeholder="Describe projects you have previously worked on"
+                    className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    {...register("previousProjects")}
+                  />
+
+                  {errors.previousProjects && (
+                    <p className="text-sm text-destructive">
+                      {errors.previousProjects.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-6 space-y-2">
+                  <Label htmlFor="portfolioUrl">
+                    Portfolio URL
+                  </Label>
 
                   <Input
                     id="portfolioUrl"
                     type="url"
                     placeholder="https://your-portfolio.com"
-                    aria-invalid={errors.portfolioUrl ? true : false}
+                    aria-invalid={Boolean(
+                      errors.portfolioUrl
+                    )}
                     {...register("portfolioUrl")}
                   />
 
@@ -323,7 +503,7 @@ export default function EditProfilePage() {
                 </div>
 
                 {submitError && (
-                  <p className="mt-6 text-sm text-destructive">
+                  <p className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                     {submitError}
                   </p>
                 )}
@@ -335,8 +515,13 @@ export default function EditProfilePage() {
                 )}
 
                 <div className="mt-8 flex justify-end">
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Saving..." : "Save Profile"}
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting
+                      ? "Saving..."
+                      : "Save Profile"}
                   </Button>
                 </div>
               </form>

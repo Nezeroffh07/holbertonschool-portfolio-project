@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import {
   API_URL,
   getAuthHeaders,
+
 } from "../../../../lib/api";
 
 type User = {
@@ -169,7 +170,11 @@ export default function EditProjectPage() {
 
         const skillsData: Skill[] =
           await skillsResponse.json();
-
+        const validSkills = skillsData.filter(
+          (skill) =>
+            skill.name.trim().toLowerCase() !== "string"
+        );
+        setSkills(validSkills);
         if (project.owner_id !== user.id) {
           setPageError(
             "You are not allowed to edit this project."
