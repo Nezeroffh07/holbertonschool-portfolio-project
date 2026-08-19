@@ -30,7 +30,7 @@ export default function Navbar({
   }, []);
 
   return (
-    <nav className="relative grid h-[72px] grid-cols-[1fr_auto_1fr] items-center border-b border-border bg-background px-4 md:px-8">
+    <nav className="sticky top-0 z-40 flex h-[72px] items-center justify-between border-b border-border bg-background px-4 md:px-8">
       <Link
         href="/"
         className={`flex flex-col leading-none text-primary ${
