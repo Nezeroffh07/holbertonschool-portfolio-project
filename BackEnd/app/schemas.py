@@ -220,6 +220,47 @@ class ApplicationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ---------- Invitation (Layihə Sahibinin Dəvətləri) ----------
+
+class InvitationCreate(BaseModel):
+    invited_user_id: int
+    role: Optional[str] = Field(
+        default=None, max_length=50, examples=["Frontend Developer"]
+    )
+    message: Optional[str] = Field(default=None, max_length=1000)
+
+
+class InvitationStatusUpdate(BaseModel):
+    status: str = Field(pattern="^(accepted|rejected)$")
+
+
+class InvitationResponse(BaseModel):
+    id: int
+    project_id: int
+    invited_user_id: int
+    role: Optional[str]
+    message: Optional[str]
+    status: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InvitationMeResponse(BaseModel):
+    """GET /invitations/me üçün — dəvəti aldığı layihə/sahib məlumatı ilə birlikdə."""
+    id: int
+    project_id: int
+    project_title: str
+    owner_id: int
+    owner_username: str
+    role: Optional[str]
+    message: Optional[str]
+    status: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ---------- Collaboration Dashboard ----------
 
 class TeamMemberResponse(BaseModel):
