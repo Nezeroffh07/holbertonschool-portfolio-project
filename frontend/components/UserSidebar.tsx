@@ -1,16 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import {
+  useEffect,
+  useState,
+} from "react";
+import {
+  usePathname,
+} from "next/navigation";
 import {
   FileText,
   FolderKanban,
   LogOut,
+  Mail,
   Pencil,
   User,
   X,
 } from "lucide-react";
+
+import {
+  API_URL,
+  getAuthHeaders,
+} from "@/lib/api";
 
 type UserData = {
   id: number;
@@ -21,6 +32,7 @@ type UserData = {
 type ProfileData = {
   full_name: string | null;
   faculty: string | null;
+  avatar_url: string | null;
 };
 
 const userLinks = [
@@ -40,6 +52,11 @@ const userLinks = [
     icon: FileText,
   },
   {
+    name: "My Invitations",
+    href: "/invitations",
+    icon: Mail,
+  },
+  {
     name: "Edit Profile",
     href: "/profile/edit",
     icon: Pencil,
@@ -49,32 +66,61 @@ const userLinks = [
 export default function UserSidebar() {
   const pathname = usePathname();
 
-  const [user, setUser] = useState<UserData | null>(null);
+  const [user, setUser] =
+    useState<UserData | null>(null);
+
   const [profile, setProfile] =
     useState<ProfileData | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+
+  const [isOpen, setIsOpen] =
+    useState(false);
 
   useEffect(() => {
     async function loadUser() {
-      const savedUser = localStorage.getItem("user");
+      const token =
+        localStorage.getItem("access_token");
 
-      if (!savedUser) {
+      if (!token) {
         return;
       }
 
       try {
-        const userData: UserData = JSON.parse(savedUser);
-        setUser(userData);
-
-        const response = await fetch(
-          `http://127.0.0.1:8000/users/${userData.id}/profile`
+        const userResponse = await fetch(
+          `${API_URL}/me`,
+          {
+            headers: getAuthHeaders(),
+          }
         );
 
-        if (response.ok) {
+        if (!userResponse.ok) {
+          return;
+        }
+
+        const userData: UserData =
+          await userResponse.json();
+
+        setUser(userData);
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify(userData)
+        );
+
+        const profileResponse =
+          await fetch(
+            `${API_URL}/users/${userData.id}/profile`,
+            {
+              headers: getAuthHeaders(),
+            }
+          );
+
+        if (profileResponse.ok) {
           const profileData: ProfileData =
-            await response.json();
+            await profileResponse.json();
 
           setProfile(profileData);
+        } else {
+          setProfile(null);
         }
       } catch {
         setProfile(null);
@@ -87,12 +133,17 @@ export default function UserSidebar() {
 
   function logout() {
     localStorage.removeItem("user");
-    localStorage.removeItem("access_token");
+    localStorage.removeItem(
+      "access_token"
+    );
+
     window.location.href = "/";
   }
 
   const displayName =
-    profile?.full_name || user?.username || "User";
+    profile?.full_name ||
+    user?.username ||
+    "User";
 
   return (
     <>
@@ -108,7 +159,9 @@ export default function UserSidebar() {
       {isOpen && (
         <button
           type="button"
-          onClick={() => setIsOpen(false)}
+          onClick={() =>
+            setIsOpen(false)
+          }
           aria-label="Close profile menu"
           className="fixed inset-0 z-40 bg-black/40 md:hidden"
         />
@@ -116,13 +169,17 @@ export default function UserSidebar() {
 
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex h-screen w-[280px] shrink-0 flex-col bg-[#16423C] text-white transition-transform duration-200 md:sticky md:top-0 md:translate-x-0 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          isOpen
+            ? "translate-x-0"
+            : "-translate-x-full"
         }`}
       >
         <div className="flex h-[72px] items-center justify-between border-b border-white/20 px-6">
           <Link
             href="/"
-            onClick={() => setIsOpen(false)}
+            onClick={() =>
+              setIsOpen(false)
+            }
             className="flex flex-col leading-none text-white"
           >
             <span className="text-2xl font-bold">
@@ -136,7 +193,9 @@ export default function UserSidebar() {
 
           <button
             type="button"
-            onClick={() => setIsOpen(false)}
+            onClick={() =>
+              setIsOpen(false)
+            }
             aria-label="Close profile menu"
             className="rounded-md p-2 text-white hover:bg-white/10 md:hidden"
           >
@@ -146,9 +205,19 @@ export default function UserSidebar() {
 
         <div className="border-b border-white/20 p-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#D3E8BF] text-lg font-semibold text-[#16423C]">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={displayName}
+                className="h-12 w-12 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#D3E8BF] text-lg font-semibold text-[#16423C]">
+                {displayName
+                  .charAt(0)
+                  .toUpperCase()}
+              </div>
+            )}
 
             <div className="min-w-0">
               <h2 className="truncate text-sm font-semibold">
@@ -168,16 +237,20 @@ export default function UserSidebar() {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-2 p-4">
+        <nav className="flex-1 space-y-2 overflow-y-auto p-4">
           {userLinks.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+
+            const isActive =
+              pathname === item.href;
 
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                onClick={() => setIsOpen(false)}
+                onClick={() =>
+                  setIsOpen(false)
+                }
                 className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium ${
                   isActive
                     ? "bg-[#D3E8BF] text-[#16423C]"
