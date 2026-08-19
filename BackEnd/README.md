@@ -6,8 +6,6 @@ Universitet tələbələri üçün komanda/layihə tapma platformasının backen
 
 **Canlı:** https://tup-backend.onrender.com
 **Swagger:** https://tup-backend.onrender.com/docs 
-username: tup
-password: 1937Tup@
 
 ---
 
@@ -54,6 +52,3 @@ Admin statusu yalnız verilənlər bazasından əl ilə təyin olunur:
 ```sql
 UPDATE users SET is_admin = true WHERE email = 'sizin@qu.edu.az';
 ```
-Hazırki admin user:
-admin@qu.edu.az
-1937Tup@
