@@ -1,19 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import {
+  FormEvent,
+  useEffect,
+  useState,
+} from "react";
+import {
+  useParams,
+  useRouter,
+} from "next/navigation";
 import {
   ArrowLeft,
-  Mail,
-  Save,
-  UserRound,
+  Calendar,
+  FileText,
+  Pencil,
   Users,
 } from "lucide-react";
 
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { API_URL, getAuthHeaders } from "@/lib/api";
+import {
+  API_URL,
+  getAuthHeaders,
+} from "@/lib/api";
+
+type Skill = {
+  id: number;
+  name: string;
+};
 
 type User = {
   id: number;
@@ -21,105 +36,111 @@ type User = {
   email: string;
 };
 
-type Skill = {
-  id: number;
-  name: string;
-};
-
-type Profile = {
-  full_name: string | null;
-  faculty: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-  skills: Skill[];
-};
-
 type Project = {
   id: number;
   title: string;
   description: string;
-  owner_id: number;
+  open_positions: number;
+  application_deadline: string | null;
   status: string;
+  owner_id: number;
+  created_at: string;
+  required_skills: Skill[];
 };
 
-type TeamMember = {
-  application_id: number;
-  user_id: number;
-  username: string;
-  email: string;
+type Application = {
+  id: number;
+  project_id: number;
+  applicant_id: number;
+  message: string | null;
+  status: string;
   role: string | null;
-  joined_at: string;
-  profile: Profile | null;
+  created_at: string;
 };
 
-export default function TeamMembersPage() {
+export default function ProjectDetailsPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const projectId = params.id;
 
-  const [project, setProject] = useState<Project | null>(null);
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [project, setProject] =
+    useState<Project | null>(null);
 
-  const [roles, setRoles] = useState<Record<number, string>>(
-    {}
-  );
+  const [currentUser, setCurrentUser] =
+    useState<User | null>(null);
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [projectError, setProjectError] =
+    useState("");
 
-  const [savingUserId, setSavingUserId] = useState<
-    number | null
-  >(null);
+  const [
+    showApplicationForm,
+    setShowApplicationForm,
+  ] = useState(false);
+
+  const [
+    applicationMessage,
+    setApplicationMessage,
+  ] = useState("");
+
+  const [
+    applicationStatus,
+    setApplicationStatus,
+  ] = useState<string | null>(null);
+
+  const [
+    applicationError,
+    setApplicationError,
+  ] = useState("");
+
+  const [
+    applicationSuccess,
+    setApplicationSuccess,
+  ] = useState("");
+
+  const [
+    applicationLoading,
+    setApplicationLoading,
+  ] = useState(false);
 
   useEffect(() => {
-    async function loadTeam() {
-      const token = localStorage.getItem("access_token");
+    async function loadPage() {
+      const token =
+        localStorage.getItem("access_token");
 
       if (!token) {
         router.replace("/login");
         return;
       }
 
-      setLoading(true);
-      setError("");
-
       try {
         const [
-          userResponse,
           projectResponse,
-          teamResponse,
+          userResponse,
         ] = await Promise.all([
+          fetch(
+            `${API_URL}/projects/${projectId}`,
+            {
+              headers: getAuthHeaders(),
+            }
+          ),
+
           fetch(`${API_URL}/me`, {
-            headers: getAuthHeaders(),
-          }),
-
-          fetch(`${API_URL}/projects/${projectId}`, {
-            headers: getAuthHeaders(),
-          }),
-
-          fetch(`${API_URL}/projects/${projectId}/team`, {
             headers: getAuthHeaders(),
           }),
         ]);
 
         if (
-          userResponse.status === 401 ||
           projectResponse.status === 401 ||
-          teamResponse.status === 401
+          userResponse.status === 401
         ) {
           localStorage.removeItem("user");
-          localStorage.removeItem("access_token");
+          localStorage.removeItem(
+            "access_token"
+          );
 
           router.replace("/login");
           return;
-        }
-
-        if (!userResponse.ok) {
-          throw new Error(
-            "Your account could not be loaded."
-          );
         }
 
         if (!projectResponse.ok) {
@@ -128,109 +149,96 @@ export default function TeamMembersPage() {
           );
         }
 
-        if (!teamResponse.ok) {
-          const errorData = await teamResponse
-            .json()
-            .catch(() => null);
-
+        if (!userResponse.ok) {
           throw new Error(
-            typeof errorData?.detail === "string"
-              ? errorData.detail
-              : "Team members could not be loaded."
+            "User information could not be loaded."
           );
         }
-
-        const userData: User =
-          await userResponse.json();
 
         const projectData: Project =
           await projectResponse.json();
 
-        const teamData: Omit<
-          TeamMember,
-          "profile"
-        >[] = await teamResponse.json();
+        const userData: User =
+          await userResponse.json();
 
-        const membersWithProfiles =
-          await Promise.all(
-            teamData.map(async (member) => {
-              try {
-                const profileResponse = await fetch(
-                  `${API_URL}/users/${member.user_id}/profile`,
-                  {
-                    headers: getAuthHeaders(),
-                  }
-                );
+        setProject(projectData);
+        setCurrentUser(userData);
 
-                if (!profileResponse.ok) {
-                  return {
-                    ...member,
-                    profile: null,
-                  };
-                }
-
-                const profile: Profile =
-                  await profileResponse.json();
-
-                return {
-                  ...member,
-                  profile,
-                };
-              } catch {
-                return {
-                  ...member,
-                  profile: null,
-                };
-              }
-            })
+        const applicationsResponse =
+          await fetch(
+            `${API_URL}/users/${userData.id}/applications`,
+            {
+              headers: getAuthHeaders(),
+            }
           );
 
-        const initialRoles: Record<number, string> = {};
+        if (applicationsResponse.ok) {
+          const applications: Application[] =
+            await applicationsResponse.json();
 
-        membersWithProfiles.forEach((member) => {
-          initialRoles[member.user_id] =
-            member.role || "";
-        });
+          const existingApplication =
+            applications.find(
+              (application) =>
+                application.project_id ===
+                Number(projectId)
+            );
 
-        setCurrentUser(userData);
-        setProject(projectData);
-        setMembers(membersWithProfiles);
-        setRoles(initialRoles);
+          if (existingApplication) {
+            setApplicationStatus(
+              existingApplication.status
+            );
+          }
+        }
       } catch (error) {
-        setError(
+        setProjectError(
           error instanceof Error
             ? error.message
-            : "Team members could not be loaded."
+            : "Project could not be loaded."
         );
       } finally {
         setLoading(false);
       }
     }
 
-    loadTeam();
+    loadPage();
   }, [projectId, router]);
 
-  async function saveRole(member: TeamMember) {
-    const role = roles[member.user_id]?.trim();
+  async function applyToProject(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
 
-    setError("");
-    setSuccessMessage("");
+    setApplicationError("");
+    setApplicationSuccess("");
 
-    if (!role) {
-      setError("Please enter a role.");
+    if (!currentUser || !project) {
+      setApplicationError(
+        "User information could not be found."
+      );
       return;
     }
 
-    setSavingUserId(member.user_id);
+    if (
+      applicationMessage.trim().length < 10
+    ) {
+      setApplicationError(
+        "Application message must contain at least 10 characters."
+      );
+      return;
+    }
+
+    setApplicationLoading(true);
 
     try {
       const response = await fetch(
-        `${API_URL}/projects/${projectId}/team/${member.user_id}/role`,
+        `${API_URL}/projects/${project.id}/apply`,
         {
-          method: "PATCH",
+          method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify({
-            role,
+            applicant_id: currentUser.id,
+            message:
+              applicationMessage.trim(),
           }),
         }
       );
@@ -239,99 +247,87 @@ export default function TeamMembersPage() {
         .json()
         .catch(() => null);
 
-      if (response.status === 401) {
-        localStorage.removeItem("user");
-        localStorage.removeItem("access_token");
-
-        router.replace("/login");
-        return;
-      }
-
       if (!response.ok) {
         throw new Error(
-          typeof responseData?.detail === "string"
+          typeof responseData?.detail ===
+            "string"
             ? responseData.detail
-            : "Role could not be updated."
+            : "Application could not be submitted."
         );
       }
 
-      setMembers((currentMembers) =>
-        currentMembers.map((currentMember) =>
-          currentMember.user_id === member.user_id
-            ? {
-                ...currentMember,
-                role: responseData.role || role,
-              }
-            : currentMember
-        )
+      setApplicationStatus("pending");
+
+      setApplicationSuccess(
+        "Your application was submitted successfully."
       );
 
-      setSuccessMessage(
-        `${member.username}'s role was updated.`
-      );
+      setApplicationMessage("");
+      setShowApplicationForm(false);
     } catch (error) {
-      setError(
+      setApplicationError(
         error instanceof Error
           ? error.message
-          : "Role could not be updated."
+          : "Application could not be submitted."
       );
     } finally {
-      setSavingUserId(null);
+      setApplicationLoading(false);
     }
   }
 
   const isProjectOwner =
-    currentUser !== null &&
-    project !== null &&
-    currentUser.id === project.owner_id;
+    currentUser?.id === project?.owner_id;
+
+  const projectIsOpen =
+    project?.status.toLowerCase() === "open";
+
+  const visibleSkills =
+    project?.required_skills.filter(
+      (skill) =>
+        skill.name.trim().toLowerCase() !==
+        "string"
+    ) || [];
 
   return (
     <ProtectedRoute>
       <AuthenticatedLayout>
         <main className="min-h-[calc(100vh-72px)] bg-background px-4 py-12 md:px-8">
-          <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-4xl">
             <Link
-              href={`/projects/${projectId}`}
+              href="/projects"
               className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Project
+              Back to Projects
             </Link>
 
             {loading && (
               <p className="mt-8 text-muted-foreground">
-                Loading team members...
+                Loading project...
               </p>
             )}
 
-            {error && (
-              <p className="mt-8 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
+            {projectError && (
+              <p className="mt-8 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive">
+                {projectError}
               </p>
             )}
 
-            {successMessage && (
-              <p className="mt-8 rounded-lg bg-secondary p-3 text-sm text-secondary-foreground">
-                {successMessage}
-              </p>
-            )}
-
-            {!loading && project && (
-              <>
-                <section className="mt-6 rounded-xl border border-border bg-card p-6 shadow-sm">
-                  <p className="text-sm font-medium text-primary">
-                    {project.title}
-                  </p>
-
-                  <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            {!loading &&
+              !projectError &&
+              project && (
+                <article className="mt-6 rounded-xl border border-border bg-card p-6 shadow-sm md:p-8">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <h1 className="text-3xl font-bold text-foreground">
-                        Team Members
+                        {project.title}
                       </h1>
 
-                      <p className="mt-3 max-w-3xl text-muted-foreground">
-                        View accepted team members and
-                        their roles.
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Created on{" "}
+                        {new Date(
+                          project.created_at
+                        ).toLocaleDateString()}
                       </p>
                     </div>
 
@@ -340,180 +336,220 @@ export default function TeamMembersPage() {
                     </span>
                   </div>
 
-                  <div className="mt-6 flex items-center gap-3 rounded-lg bg-accent p-4 text-accent-foreground">
-                    <Users className="h-5 w-5" />
-
-                    <p className="text-sm font-medium">
-                      {members.length} accepted member
-                      {members.length === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                </section>
-
-                {members.length === 0 && (
-                  <section className="mt-8 rounded-xl border border-border bg-card px-6 py-12 text-center shadow-sm">
-                    <Users className="mx-auto h-8 w-8 text-primary" />
-
-                    <h2 className="mt-4 text-xl font-semibold text-foreground">
-                      No accepted members yet
+                  <section className="mt-8">
+                    <h2 className="text-xl font-semibold text-foreground">
+                      About the Project
                     </h2>
 
-                    <p className="mt-2 text-muted-foreground">
-                      Accepted applicants will appear here.
+                    <p className="mt-3 whitespace-pre-line leading-7 text-muted-foreground">
+                      {project.description}
                     </p>
                   </section>
-                )}
 
-                {members.length > 0 && (
                   <section className="mt-8">
-                    <h2 className="text-2xl font-semibold text-foreground">
-                      Accepted Members
+                    <h2 className="text-xl font-semibold text-foreground">
+                      Required Skills
                     </h2>
 
-                    <div className="mt-5 grid gap-5 md:grid-cols-2">
-                      {members.map((member) => {
-                        const displayName =
-                          member.profile?.full_name ||
-                          member.username;
+                    {visibleSkills.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {visibleSkills.map(
+                          (skill) => (
+                            <span
+                              key={skill.id}
+                              className="rounded-full bg-accent px-3 py-1 text-sm text-accent-foreground"
+                            >
+                              {skill.name}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        No required skills provided.
+                      </p>
+                    )}
+                  </section>
 
-                        return (
-                          <article
-                            key={member.application_id}
-                            className="rounded-xl border border-border bg-card p-5 shadow-sm"
-                          >
-                            <div className="flex items-start gap-4">
-                              {member.profile?.avatar_url ? (
-                                <img
-                                  src={
-                                    member.profile.avatar_url
-                                  }
-                                  alt={displayName}
-                                  className="h-14 w-14 shrink-0 rounded-full object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-                                  <UserRound className="h-6 w-6" />
-                                </div>
-                              )}
+                  <section className="mt-8 grid gap-4 sm:grid-cols-2">
+                    <div className="flex items-center gap-3 rounded-xl border border-border p-4">
+                      <Users className="h-5 w-5 text-primary" />
 
-                              <div className="min-w-0">
-                                <h3 className="text-lg font-semibold text-foreground">
-                                  {displayName}
-                                </h3>
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          Open Positions
+                        </p>
 
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                  @{member.username}
-                                </p>
+                        <p className="font-semibold text-foreground">
+                          {project.open_positions}
+                        </p>
+                      </div>
+                    </div>
 
-                                <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Mail className="h-4 w-4 shrink-0" />
+                    <div className="flex items-center gap-3 rounded-xl border border-border p-4">
+                      <Calendar className="h-5 w-5 text-primary" />
 
-                                  <span className="truncate">
-                                    {member.email}
-                                  </span>
-                                </p>
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          Application Deadline
+                        </p>
 
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                  {member.profile?.faculty ||
-                                    "Faculty not provided"}
-                                </p>
-                              </div>
-                            </div>
-
-                            {member.profile?.bio && (
-                              <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                                {member.profile.bio}
-                              </p>
-                            )}
-
-                            {member.profile &&
-                              member.profile.skills.length >
-                                0 && (
-                                <div className="mt-4 flex flex-wrap gap-2">
-                                  {member.profile.skills.map(
-                                    (skill) => (
-                                      <span
-                                        key={skill.id}
-                                        className="rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground"
-                                      >
-                                        {skill.name}
-                                      </span>
-                                    )
-                                  )}
-                                </div>
-                              )}
-
-                            <div className="mt-5 rounded-lg bg-background p-3">
-                              <p className="text-xs text-muted-foreground">
-                                Team Role
-                              </p>
-
-                              <p className="mt-1 font-medium text-foreground">
-                                {member.role ||
-                                  "Role not assigned"}
-                              </p>
-                            </div>
-
-                            {isProjectOwner && (
-                              <div className="mt-5 border-t border-border pt-5">
-                                <label
-                                  htmlFor={`role-${member.user_id}`}
-                                  className="text-sm font-medium text-foreground"
-                                >
-                                  Change Role
-                                </label>
-
-                                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                                  <input
-                                    id={`role-${member.user_id}`}
-                                    type="text"
-                                    value={
-                                      roles[member.user_id] ||
-                                      ""
-                                    }
-                                    onChange={(event) =>
-                                      setRoles(
-                                        (currentRoles) => ({
-                                          ...currentRoles,
-                                          [member.user_id]:
-                                            event.target
-                                              .value,
-                                        })
-                                      )
-                                    }
-                                    placeholder="Frontend Developer"
-                                    className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
-                                  />
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      saveRole(member)
-                                    }
-                                    disabled={
-                                      savingUserId ===
-                                      member.user_id
-                                    }
-                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    <Save className="h-4 w-4" />
-
-                                    {savingUserId ===
-                                    member.user_id
-                                      ? "Saving..."
-                                      : "Save"}
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </article>
-                        );
-                      })}
+                        <p className="font-semibold text-foreground">
+                          {project.application_deadline
+                            ? new Date(
+                                project.application_deadline
+                              ).toLocaleDateString()
+                            : "No deadline"}
+                        </p>
+                      </div>
                     </div>
                   </section>
-                )}
-              </>
-            )}
+
+                  {isProjectOwner && (
+                    <section className="mt-8">
+                      <div className="rounded-lg bg-secondary p-4 text-sm text-secondary-foreground">
+                        You are the owner of this project.
+                      </div>
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <Link
+                          href={`/projects/${project.id}/edit`}
+                          className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-muted"
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Edit Project
+                        </Link>
+
+                        <Link
+                          href={`/projects/${project.id}/applications`}
+                          className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-muted"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Applications
+                        </Link>
+
+                        <Link
+                          href={`/projects/${project.id}/team`}
+                          className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-muted"
+                        >
+                          <Users className="h-4 w-4" />
+                          Team Members
+                        </Link>
+                      </div>
+                    </section>
+                  )}
+
+                  {!isProjectOwner && (
+                    <Link
+                      href={`/projects/${project.id}/team`}
+                      className="mt-6 flex w-fit items-center gap-2 rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-muted"
+                    >
+                      <Users className="h-4 w-4" />
+                      View Team Members
+                    </Link>
+                  )}
+
+                  {!isProjectOwner &&
+                    !projectIsOpen && (
+                      <div className="mt-8 rounded-lg bg-muted p-4 text-sm text-foreground">
+                        This project is not accepting
+                        applications.
+                      </div>
+                    )}
+
+                  {applicationSuccess && (
+                    <div className="mt-8 rounded-lg bg-secondary p-4 text-sm text-secondary-foreground">
+                      {applicationSuccess}
+                    </div>
+                  )}
+
+                  {applicationStatus && (
+                    <div className="mt-8 rounded-lg border border-border bg-background p-4 text-sm text-foreground">
+                      Application status:{" "}
+                      <span className="font-semibold capitalize">
+                        {applicationStatus}
+                      </span>
+                    </div>
+                  )}
+
+                  {applicationError && (
+                    <p className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                      {applicationError}
+                    </p>
+                  )}
+
+                  {!isProjectOwner &&
+                    projectIsOpen &&
+                    !applicationStatus &&
+                    !showApplicationForm && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowApplicationForm(
+                            true
+                          )
+                        }
+                        className="mt-8 w-full rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground hover:bg-primary/90"
+                      >
+                        Apply to Project
+                      </button>
+                    )}
+
+                  {showApplicationForm &&
+                    !applicationStatus && (
+                      <form
+                        onSubmit={applyToProject}
+                        className="mt-8 rounded-xl border border-border bg-background p-5"
+                      >
+                        <label
+                          htmlFor="applicationMessage"
+                          className="font-medium text-foreground"
+                        >
+                          Application Message
+                        </label>
+
+                        <textarea
+                          id="applicationMessage"
+                          value={applicationMessage}
+                          onChange={(event) =>
+                            setApplicationMessage(
+                              event.target.value
+                            )
+                          }
+                          rows={5}
+                          placeholder="Explain why you would like to join this project"
+                          className="mt-2 w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
+                        />
+
+                        <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowApplicationForm(
+                                false
+                              )
+                            }
+                            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                          >
+                            Cancel
+                          </button>
+
+                          <button
+                            type="submit"
+                            disabled={
+                              applicationLoading
+                            }
+                            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {applicationLoading
+                              ? "Submitting..."
+                              : "Submit Application"}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                </article>
+              )}
           </div>
         </main>
       </AuthenticatedLayout>

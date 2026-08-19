@@ -8,18 +8,18 @@ import {
 } from "next/navigation";
 import {
   ArrowLeft,
-  Check,
-  FileText,
-  X,
+  Mail,
+  Save,
+  UserRound,
+  Users,
 } from "lucide-react";
 
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
-
 import {
   API_URL,
   getAuthHeaders,
-} from "../../../../lib/api";
+} from "@/lib/api";
 
 type User = {
   id: number;
@@ -27,66 +27,114 @@ type User = {
   email: string;
 };
 
+type Skill = {
+  id: number;
+  name: string;
+};
+
+type Profile = {
+  full_name: string | null;
+  faculty: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  skills: Skill[];
+};
+
 type Project = {
   id: number;
   title: string;
   owner_id: number;
-};
-
-type Application = {
-  id: number;
-  project_id: number;
-  applicant_id: number;
-  message: string | null;
   status: string;
-  role: string | null;
-  created_at: string;
 };
 
-export default function ProjectApplicationsPage() {
+type TeamMember = {
+  application_id: number;
+  user_id: number;
+  username: string;
+  email: string;
+  role: string | null;
+  joined_at: string;
+  profile: Profile | null;
+};
+
+export default function TeamMembersPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const projectId = params.id;
 
   const [project, setProject] =
     useState<Project | null>(null);
 
-  const [applications, setApplications] =
-    useState<Application[]>([]);
+  const [currentUser, setCurrentUser] =
+    useState<User | null>(null);
+
+  const [members, setMembers] =
+    useState<TeamMember[]>([]);
+
+  const [roles, setRoles] =
+    useState<Record<number, string>>({});
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] =
+    useState("");
 
-  const [updatingId, setUpdatingId] =
+  const [savingUserId, setSavingUserId] =
     useState<number | null>(null);
 
   useEffect(() => {
-    async function getApplications() {
-      const savedUser =
-        localStorage.getItem("user");
-
+    async function loadTeam() {
       const token =
         localStorage.getItem("access_token");
 
-      if (!savedUser || !token) {
+      if (!token) {
         router.replace("/login");
         return;
       }
 
       try {
-        const user: User = JSON.parse(savedUser);
-
-        const projectResponse = await fetch(
-          `${API_URL}/projects/${params.id}`,
-          {
+        const [
+          userResponse,
+          projectResponse,
+          teamResponse,
+        ] = await Promise.all([
+          fetch(`${API_URL}/me`, {
             headers: getAuthHeaders(),
-          }
-        );
+          }),
 
-        if (projectResponse.status === 401) {
+          fetch(
+            `${API_URL}/projects/${projectId}`,
+            {
+              headers: getAuthHeaders(),
+            }
+          ),
+
+          fetch(
+            `${API_URL}/projects/${projectId}/team`,
+            {
+              headers: getAuthHeaders(),
+            }
+          ),
+        ]);
+
+        if (
+          userResponse.status === 401 ||
+          projectResponse.status === 401 ||
+          teamResponse.status === 401
+        ) {
           localStorage.removeItem("user");
-          localStorage.removeItem("access_token");
+          localStorage.removeItem(
+            "access_token"
+          );
+
           router.replace("/login");
           return;
+        }
+
+        if (!userResponse.ok) {
+          throw new Error(
+            "Your account could not be loaded."
+          );
         }
 
         if (!projectResponse.ok) {
@@ -95,78 +143,118 @@ export default function ProjectApplicationsPage() {
           );
         }
 
-        const projectData: Project =
-          await projectResponse.json();
-
-        if (projectData.owner_id !== user.id) {
-          setError(
-            "Only the project owner can view these applications."
-          );
-          return;
-        }
-
-        setProject(projectData);
-
-        const applicationsResponse = await fetch(
-          `${API_URL}/projects/${params.id}/applications`,
-          {
-            headers: getAuthHeaders(),
-          }
-        );
-
-        if (applicationsResponse.status === 401) {
-          localStorage.removeItem("user");
-          localStorage.removeItem("access_token");
-          router.replace("/login");
-          return;
-        }
-
-        const responseData =
-          await applicationsResponse
+        if (!teamResponse.ok) {
+          const errorData = await teamResponse
             .json()
             .catch(() => null);
 
-        if (!applicationsResponse.ok) {
           throw new Error(
-            typeof responseData?.detail === "string"
-              ? responseData.detail
-              : "Applications could not be loaded."
+            typeof errorData?.detail === "string"
+              ? errorData.detail
+              : "Team members could not be loaded."
           );
         }
 
-        const applicationsData: Application[] =
-          responseData;
+        const userData: User =
+          await userResponse.json();
 
-        setApplications(applicationsData);
+        const projectData: Project =
+          await projectResponse.json();
+
+        const teamData: Omit<
+          TeamMember,
+          "profile"
+        >[] = await teamResponse.json();
+
+        const membersWithProfiles =
+          await Promise.all(
+            teamData.map(async (member) => {
+              try {
+                const profileResponse =
+                  await fetch(
+                    `${API_URL}/users/${member.user_id}/profile`,
+                    {
+                      headers: getAuthHeaders(),
+                    }
+                  );
+
+                if (!profileResponse.ok) {
+                  return {
+                    ...member,
+                    profile: null,
+                  };
+                }
+
+                const profile: Profile =
+                  await profileResponse.json();
+
+                return {
+                  ...member,
+                  profile,
+                };
+              } catch {
+                return {
+                  ...member,
+                  profile: null,
+                };
+              }
+            })
+          );
+
+        const initialRoles: Record<
+          number,
+          string
+        > = {};
+
+        membersWithProfiles.forEach(
+          (member) => {
+            initialRoles[member.user_id] =
+              member.role || "";
+          }
+        );
+
+        setCurrentUser(userData);
+        setProject(projectData);
+        setMembers(membersWithProfiles);
+        setRoles(initialRoles);
       } catch (error) {
         setError(
           error instanceof Error
             ? error.message
-            : "Applications could not be loaded."
+            : "Team members could not be loaded."
         );
       } finally {
         setLoading(false);
       }
     }
 
-    getApplications();
-  }, [params.id, router]);
+    loadTeam();
+  }, [projectId, router]);
 
-  async function updateApplication(
-    applicationId: number,
-    newStatus: "accepted" | "rejected"
+  async function saveRole(
+    member: TeamMember
   ) {
+    const role =
+      roles[member.user_id]?.trim();
+
     setError("");
-    setUpdatingId(applicationId);
+    setSuccessMessage("");
+
+    if (!role) {
+      setError("Please enter a role.");
+      return;
+    }
+
+    setSavingUserId(member.user_id);
 
     try {
       const response = await fetch(
-        `${API_URL}/applications/${applicationId}`,
+        `${API_URL}/projects/${projectId}/team/${member.user_id}/role`,
         {
           method: "PATCH",
           headers: getAuthHeaders(),
           body: JSON.stringify({
-            status: newStatus,
+            role,
           }),
         }
       );
@@ -175,175 +263,286 @@ export default function ProjectApplicationsPage() {
         .json()
         .catch(() => null);
 
-      if (response.status === 401) {
-        localStorage.removeItem("user");
-        localStorage.removeItem("access_token");
-        router.replace("/login");
-        return;
-      }
-
       if (!response.ok) {
         throw new Error(
           typeof responseData?.detail === "string"
             ? responseData.detail
-            : "Application status could not be updated."
+            : "Role could not be updated."
         );
       }
 
-      const updatedApplication: Application =
-        responseData;
-
-      setApplications((currentApplications) =>
-        currentApplications.map((application) =>
-          application.id === updatedApplication.id
-            ? updatedApplication
-            : application
+      setMembers((currentMembers) =>
+        currentMembers.map(
+          (currentMember) =>
+            currentMember.user_id ===
+            member.user_id
+              ? {
+                  ...currentMember,
+                  role:
+                    responseData.role || role,
+                }
+              : currentMember
         )
+      );
+
+      setSuccessMessage(
+        `${member.username}'s role was updated.`
       );
     } catch (error) {
       setError(
         error instanceof Error
           ? error.message
-          : "Application status could not be updated."
+          : "Role could not be updated."
       );
     } finally {
-      setUpdatingId(null);
+      setSavingUserId(null);
     }
   }
+
+  const isProjectOwner =
+    currentUser?.id === project?.owner_id;
 
   return (
     <ProtectedRoute>
       <AuthenticatedLayout>
         <main className="min-h-[calc(100vh-72px)] bg-background px-4 py-12 md:px-8">
-          <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-6xl">
             <Link
-              href="/my-projects"
+              href={`/projects/${projectId}`}
               className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to My Projects
+              Back to Project
             </Link>
-
-            <div className="mt-6">
-              <h1 className="text-3xl font-bold text-foreground">
-                Project Applications
-              </h1>
-
-              {project && (
-                <p className="mt-2 text-muted-foreground">
-                  Applications for {project.title}
-                </p>
-              )}
-            </div>
 
             {loading && (
               <p className="mt-8 text-muted-foreground">
-                Loading applications...
+                Loading team members...
               </p>
             )}
 
             {error && (
-              <p className="mt-8 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              <p className="mt-8 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive">
                 {error}
               </p>
             )}
 
-            {!loading &&
-              !error &&
-              applications.length === 0 && (
-                <section className="mt-8 rounded-xl border border-border bg-card p-8 text-center shadow-sm">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
-                    <FileText className="h-7 w-7 text-secondary-foreground" />
-                  </div>
+            {successMessage && (
+              <p className="mt-8 rounded-lg bg-secondary p-4 text-secondary-foreground">
+                {successMessage}
+              </p>
+            )}
 
-                  <h2 className="mt-4 text-xl font-semibold text-foreground">
-                    No applications yet
-                  </h2>
-
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Applications will appear here when users
-                    apply to your project.
+            {!loading && project && (
+              <>
+                <section className="mt-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+                  <p className="text-sm font-medium text-primary">
+                    {project.title}
                   </p>
-                </section>
-              )}
 
-            {!loading && applications.length > 0 && (
-              <div className="mt-8 space-y-4">
-                {applications.map((application) => (
-                  <article
-                    key={application.id}
-                    className="rounded-xl border border-border bg-card p-6 shadow-sm"
-                  >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h2 className="font-semibold text-foreground">
-                          Applicant #
-                          {application.applicant_id}
-                        </h2>
+                  <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h1 className="text-3xl font-bold text-foreground">
+                        Team Members
+                      </h1>
 
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Applied on{" "}
-                          {new Date(
-                            application.created_at
-                          ).toLocaleDateString()}
-                        </p>
-                      </div>
-
-                      <span className="w-fit rounded-full bg-secondary px-3 py-1 text-xs font-medium capitalize text-secondary-foreground">
-                        {application.status}
-                      </span>
-                    </div>
-
-                    <div className="mt-5 rounded-lg bg-background p-4">
-                      <p className="text-sm leading-6 text-muted-foreground">
-                        {application.message ||
-                          "No application message was provided."}
+                      <p className="mt-3 text-muted-foreground">
+                        View accepted team members and their
+                        roles.
                       </p>
                     </div>
 
-                    {application.status ===
-                      "pending" && (
-                      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateApplication(
-                              application.id,
-                              "rejected"
-                            )
-                          }
-                          disabled={
-                            updatingId ===
-                            application.id
-                          }
-                          className="inline-flex items-center justify-center gap-2 rounded-lg border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <X className="h-4 w-4" />
-                          Reject
-                        </button>
+                    <span className="w-fit rounded-full bg-secondary px-3 py-1 text-sm font-medium capitalize text-secondary-foreground">
+                      {project.status}
+                    </span>
+                  </div>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateApplication(
-                              application.id,
-                              "accepted"
-                            )
-                          }
-                          disabled={
-                            updatingId ===
-                            application.id
-                          }
-                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Check className="h-4 w-4" />
-                          Accept
-                        </button>
-                      </div>
-                    )}
-                  </article>
-                ))}
-              </div>
+                  <div className="mt-6 flex items-center gap-3 rounded-lg bg-accent p-4 text-accent-foreground">
+                    <Users className="h-5 w-5" />
+
+                    <p className="text-sm font-medium">
+                      {members.length} accepted member
+                      {members.length === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                </section>
+
+                {members.length === 0 && (
+                  <section className="mt-8 rounded-xl border border-border bg-card px-6 py-12 text-center shadow-sm">
+                    <Users className="mx-auto h-8 w-8 text-primary" />
+
+                    <h2 className="mt-4 text-xl font-semibold text-foreground">
+                      No accepted members yet
+                    </h2>
+
+                    <p className="mt-2 text-muted-foreground">
+                      Accepted applicants will appear here.
+                    </p>
+                  </section>
+                )}
+
+                {members.length > 0 && (
+                  <section className="mt-8">
+                    <h2 className="text-2xl font-semibold text-foreground">
+                      Accepted Members
+                    </h2>
+
+                    <div className="mt-5 grid gap-5 md:grid-cols-2">
+                      {members.map((member) => {
+                        const displayName =
+                          member.profile?.full_name ||
+                          member.username;
+
+                        const visibleSkills =
+                          member.profile?.skills?.filter(
+                            (skill) =>
+                              skill.name
+                                .trim()
+                                .toLowerCase() !==
+                              "string"
+                          ) || [];
+
+                        return (
+                          <article
+                            key={member.application_id}
+                            className="rounded-xl border border-border bg-card p-5 shadow-sm"
+                          >
+                            <div className="flex items-start gap-4">
+                              {member.profile
+                                ?.avatar_url ? (
+                                <img
+                                  src={
+                                    member.profile
+                                      .avatar_url
+                                  }
+                                  alt={displayName}
+                                  className="h-14 w-14 shrink-0 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                                  <UserRound className="h-6 w-6" />
+                                </div>
+                              )}
+
+                              <div className="min-w-0">
+                                <h3 className="text-lg font-semibold text-foreground">
+                                  {displayName}
+                                </h3>
+
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  @{member.username}
+                                </p>
+
+                                <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Mail className="h-4 w-4 shrink-0" />
+
+                                  <span className="truncate">
+                                    {member.email}
+                                  </span>
+                                </p>
+
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  {member.profile
+                                    ?.faculty ||
+                                    "Faculty not provided"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {member.profile?.bio && (
+                              <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                                {member.profile.bio}
+                              </p>
+                            )}
+
+                            {visibleSkills.length > 0 && (
+                              <div className="mt-4 flex flex-wrap gap-2">
+                                {visibleSkills.map(
+                                  (skill) => (
+                                    <span
+                                      key={skill.id}
+                                      className="rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground"
+                                    >
+                                      {skill.name}
+                                    </span>
+                                  )
+                                )}
+                              </div>
+                            )}
+
+                            <div className="mt-5 rounded-lg bg-background p-3">
+                              <p className="text-xs text-muted-foreground">
+                                Team Role
+                              </p>
+
+                              <p className="mt-1 font-medium text-foreground">
+                                {member.role ||
+                                  "Role not assigned"}
+                              </p>
+                            </div>
+
+                            {isProjectOwner && (
+                              <div className="mt-5 border-t border-border pt-5">
+                                <label
+                                  htmlFor={`role-${member.user_id}`}
+                                  className="text-sm font-medium text-foreground"
+                                >
+                                  Change Role
+                                </label>
+
+                                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                                  <input
+                                    id={`role-${member.user_id}`}
+                                    type="text"
+                                    value={
+                                      roles[
+                                        member.user_id
+                                      ] || ""
+                                    }
+                                    onChange={(event) =>
+                                      setRoles(
+                                        (
+                                          currentRoles
+                                        ) => ({
+                                          ...currentRoles,
+                                          [member.user_id]:
+                                            event.target
+                                              .value,
+                                        })
+                                      )
+                                    }
+                                    placeholder="Frontend Developer"
+                                    className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring/30"
+                                  />
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      saveRole(member)
+                                    }
+                                    disabled={
+                                      savingUserId ===
+                                      member.user_id
+                                    }
+                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                  >
+                                    <Save className="h-4 w-4" />
+
+                                    {savingUserId ===
+                                    member.user_id
+                                      ? "Saving..."
+                                      : "Save"}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
+              </>
             )}
           </div>
         </main>

@@ -34,6 +34,7 @@ type Profile = {
   avatar_url: string | null;
   interests: string | null;
   previous_projects: string | null;
+  is_public: boolean;
   skills: Skill[];
 };
 
@@ -79,9 +80,11 @@ const profileSchema = z.object({
   previousProjects: z
     .string()
     .max(
-      1500,
-      "Previous projects cannot exceed 1500 characters."
+      2000,
+      "Previous projects cannot exceed 2000 characters."
     ),
+
+  isPublic: z.boolean(),
 
   skillIds: z
     .array(z.string())
@@ -117,6 +120,7 @@ export default function EditProfilePage() {
       avatarUrl: "",
       interests: "",
       previousProjects: "",
+      isPublic: true,
       skillIds: [],
     },
   });
@@ -126,15 +130,20 @@ export default function EditProfilePage() {
       const token = localStorage.getItem("access_token");
 
       if (!token) {
-        setPageError("Please log in to edit your profile.");
+        setPageError(
+          "Please log in to edit your profile."
+        );
         setPageLoading(false);
         return;
       }
 
       try {
-        const userResponse = await fetch(`${API_URL}/me`, {
-          headers: getAuthHeaders(),
-        });
+        const userResponse = await fetch(
+          `${API_URL}/me`,
+          {
+            headers: getAuthHeaders(),
+          }
+        );
 
         if (!userResponse.ok) {
           throw new Error(
@@ -152,7 +161,9 @@ export default function EditProfilePage() {
         );
 
         if (!skillsResponse.ok) {
-          throw new Error("Skills could not be loaded.");
+          throw new Error(
+            "Skills could not be loaded."
+          );
         }
 
         const skillsData: Skill[] =
@@ -160,7 +171,8 @@ export default function EditProfilePage() {
 
         const validSkills = skillsData.filter(
           (skill) =>
-            skill.name.trim().toLowerCase() !== "string"
+            skill.name.trim().toLowerCase() !==
+            "string"
         );
 
         setSkills(validSkills);
@@ -179,19 +191,24 @@ export default function EditProfilePage() {
           reset({
             fullName: profile.full_name || "",
             university:
-              profile.university || "Karabakh University",
+              profile.university ||
+              "Karabakh University",
             faculty: profile.faculty || "",
             bio: profile.bio || "",
-            portfolioUrl: profile.portfolio_url || "",
+            portfolioUrl:
+              profile.portfolio_url || "",
             avatarUrl: profile.avatar_url || "",
             interests: profile.interests || "",
             previousProjects:
               profile.previous_projects || "",
-            skillIds: profile.skills.map((skill) =>
-              String(skill.id)
+            isPublic: profile.is_public ?? true,
+            skillIds: profile.skills.map(
+              (skill) => String(skill.id)
             ),
           });
-        } else if (profileResponse.status !== 404) {
+        } else if (
+          profileResponse.status !== 404
+        ) {
           throw new Error(
             "Profile could not be loaded."
           );
@@ -217,9 +234,12 @@ export default function EditProfilePage() {
     setSuccessMessage("");
 
     try {
-      const userResponse = await fetch(`${API_URL}/me`, {
-        headers: getAuthHeaders(),
-      });
+      const userResponse = await fetch(
+        `${API_URL}/me`,
+        {
+          headers: getAuthHeaders(),
+        }
+      );
 
       if (!userResponse.ok) {
         throw new Error(
@@ -241,7 +261,9 @@ export default function EditProfilePage() {
         interests:
           formData.interests.trim() || null,
         previous_projects:
-          formData.previousProjects.trim() || null,
+          formData.previousProjects.trim() ||
+          null,
+        is_public: formData.isPublic,
         skill_ids: formData.skillIds.map(Number),
       };
 
@@ -319,7 +341,9 @@ export default function EditProfilePage() {
                     id="fullName"
                     type="text"
                     placeholder="Enter your full name"
-                    aria-invalid={Boolean(errors.fullName)}
+                    aria-invalid={Boolean(
+                      errors.fullName
+                    )}
                     {...register("fullName")}
                   />
 
@@ -353,7 +377,9 @@ export default function EditProfilePage() {
                       id="faculty"
                       type="text"
                       placeholder="Enter your faculty"
-                      aria-invalid={Boolean(errors.faculty)}
+                      aria-invalid={Boolean(
+                        errors.faculty
+                      )}
                       {...register("faculty")}
                     />
 
@@ -374,7 +400,9 @@ export default function EditProfilePage() {
                     id="avatarUrl"
                     type="url"
                     placeholder="https://example.com/photo.jpg"
-                    aria-invalid={Boolean(errors.avatarUrl)}
+                    aria-invalid={Boolean(
+                      errors.avatarUrl
+                    )}
                     {...register("avatarUrl")}
                   />
 
@@ -399,7 +427,7 @@ export default function EditProfilePage() {
                     id="bio"
                     rows={5}
                     placeholder="Tell others about yourself"
-                    className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
                     {...register("bio")}
                   />
 
@@ -419,7 +447,7 @@ export default function EditProfilePage() {
                     id="interests"
                     rows={3}
                     placeholder="Artificial intelligence, web development, startups"
-                    className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
                     {...register("interests")}
                   />
 
@@ -439,13 +467,16 @@ export default function EditProfilePage() {
                     id="previousProjects"
                     rows={4}
                     placeholder="Describe projects you have previously worked on"
-                    className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
                     {...register("previousProjects")}
                   />
 
                   {errors.previousProjects && (
                     <p className="text-sm text-destructive">
-                      {errors.previousProjects.message}
+                      {
+                        errors.previousProjects
+                          .message
+                      }
                     </p>
                   )}
                 </div>
@@ -470,6 +501,27 @@ export default function EditProfilePage() {
                       {errors.portfolioUrl.message}
                     </p>
                   )}
+                </div>
+
+                <div className="mt-6 rounded-lg border border-border bg-background p-4">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 accent-primary"
+                      {...register("isPublic")}
+                    />
+
+                    <div>
+                      <p className="font-medium text-foreground">
+                        Show my profile in TUP Community
+                      </p>
+
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Other TUP users will be able to view
+                        your profile, skills and interests.
+                      </p>
+                    </div>
+                  </label>
                 </div>
 
                 <div className="mt-6 space-y-3">
