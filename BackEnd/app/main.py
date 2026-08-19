@@ -22,6 +22,7 @@ from app.routers import (
     application_routes,
     team_routes,
     admin_routes,
+    community_routes,
 )
 
 # Swagger/ReDoc-u parolla qorumaq (istəyə bağlı).
@@ -114,6 +115,7 @@ app.include_router(project_routes.router)
 app.include_router(application_routes.router)
 app.include_router(team_routes.router)
 app.include_router(admin_routes.router)
+app.include_router(community_routes.router)
 
 
 @app.exception_handler(RequestValidationError)
