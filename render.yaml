@@ -37,7 +37,8 @@ services:
       # Token nə qədər etibarlı qalsın (dəqiqə). 1440 = 24 saat
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "1440"
-
+      - key: ALLOWED_ORIGINS
+        sync: false
       # Frontend deploy olunandan sonra bura real domeni yazın, məsələn:
       #   https://tup-frontend.vercel.app
       # Bir neçə domen üçün vergüllə ayırın.
