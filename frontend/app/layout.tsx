@@ -4,14 +4,14 @@ import "./globals.css";
 import Footer from "@/components/Footer";
 
 const poppins = Poppins({
-  variable: "--font-sans",
+  variable: "--font-poppins",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
   title: "TUP - TeamUp Platform",
-  description: "Universitet tələbələri üçün komanda/layihə tapma platforması",
+  description: "A team and project platform for university students",
 };
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="az" className={`${poppins.variable} h-full antialiased`}>
+    <html lang="en" className={`${poppins.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <div className="flex-1">{children}</div>
         <Footer />
