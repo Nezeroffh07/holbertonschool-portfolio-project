@@ -37,10 +37,16 @@ services:
       # Token nə qədər etibarlı qalsın (dəqiqə). 1440 = 24 saat
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "1440"
-      - key: ALLOWED_ORIGINS
-        sync: false
       # Frontend deploy olunandan sonra bura real domeni yazın, məsələn:
       #   https://tup-frontend.vercel.app
       # Bir neçə domen üçün vergüllə ayırın.
       - key: ALLOWED_ORIGINS
         sync: false
+        # DİQQƏT: Render bu dəyəri avtomatik doldurmur (sync: false).
+        # Deploy-dan sonra Render Dashboard → tup-backend → Environment
+        # bölməsində ƏL İLƏ əlavə edilməlidir, əks halda frontend
+        # backend-ə CORS xətası ilə qoşula bilməz.
+        #
+        # Hazırkı canlı dəyər (19.08.2026-da təyin olunub):
+        #   https://holbertonschool-portfolio-project-5.vercel.app,
+        #   https://holbertonschool-portfolio-project-5zt3-2gnagoe0z-nexus-eeb4.vercel.app
