@@ -56,7 +56,7 @@ export default function MyApplicationsPage() {
         const user: User = JSON.parse(savedUser);
 
         const response = await fetch(
-          `http://127.0.0.1:8000/users/${user.id}/applications`
+          `${API_URL}/users/${user.id}/applications`
         );
 
         if (!response.ok) {
@@ -73,7 +73,7 @@ export default function MyApplicationsPage() {
             applicationData.map(async (application) => {
               try {
                 const projectResponse = await fetch(
-                  `http://127.0.0.1:8000/projects/${application.project_id}`
+                  `${API_URL}/projects/${application.project_id}`
                 );
 
                 if (!projectResponse.ok) {
