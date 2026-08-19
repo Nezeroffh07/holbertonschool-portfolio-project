@@ -20,6 +20,7 @@ from app.routers import (
     profile_routes,
     project_routes,
     application_routes,
+    invitation_routes,
     team_routes,
     admin_routes,
     community_routes,
@@ -113,6 +114,7 @@ app.include_router(skills_routes.router)
 app.include_router(profile_routes.router)
 app.include_router(project_routes.router)
 app.include_router(application_routes.router)
+app.include_router(invitation_routes.router)
 app.include_router(team_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(community_routes.router)
