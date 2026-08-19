@@ -95,6 +95,10 @@ class ProfileUpsert(BaseModel):
         description="Əvvəlki layihələr haqqında qısa məlumat",
         examples=["Universitet daxili hackathonda mobil tətbiq (2025)"],
     )
+    is_public: bool = Field(
+        default=True,
+        description="TUP Community kataloqunda görünsün. False — yalnız sən görürsən.",
+    )
 
 
 class ProfileResponse(BaseModel):
@@ -109,6 +113,29 @@ class ProfileResponse(BaseModel):
     avatar_url: Optional[str] = Field(default=None, max_length=500)
     interests: Optional[str] = None
     previous_projects: Optional[str] = None
+    is_public: bool = True
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CommunityMemberResponse(BaseModel):
+    """
+    TUP Community (istifadəçi kataloqu) səhifəsi üçün — Profile-ı
+    User-dəki username/email ilə birləşdirir. Yalnız profil yaratmış
+    istifadəçilər burada görünür (boş profil kataloqda faydasızdır).
+    """
+    user_id: int
+    username: str
+    email: EmailStr
+    full_name: Optional[str]
+    university: Optional[str]
+    faculty: Optional[str]
+    bio: Optional[str]
+    portfolio_url: Optional[str]
+    avatar_url: Optional[str]
+    interests: Optional[str]
+    previous_projects: Optional[str]
+    skills: list[SkillResponse]
 
     model_config = ConfigDict(from_attributes=True)
 
