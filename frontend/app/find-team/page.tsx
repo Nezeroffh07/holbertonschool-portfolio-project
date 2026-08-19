@@ -5,7 +5,7 @@ import { Search, Users } from "lucide-react";
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
-export default function FindTeamPage() {
+export default function CommunityPage() {
   return (
     <ProtectedRoute>
       <AuthenticatedLayout>
@@ -13,12 +13,12 @@ export default function FindTeamPage() {
           <div className="mx-auto max-w-6xl">
             <div>
               <h1 className="text-3xl font-bold text-foreground">
-                Find Team Members
+                TUP Community
               </h1>
 
               <p className="mt-2 max-w-2xl text-muted-foreground">
-                Discover students whose skills and interests
-                match your project.
+                Discover TUP users, explore their skills, and
+                connect with people from different faculties.
               </p>
             </div>
 
@@ -29,7 +29,7 @@ export default function FindTeamPage() {
 
                   <input
                     type="search"
-                    placeholder="Search by name"
+                    placeholder="Search users by name"
                     disabled
                     className="h-11 w-full rounded-lg border border-input bg-background pl-10 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60"
                   />
@@ -51,8 +51,8 @@ export default function FindTeamPage() {
               </div>
 
               <p className="mt-3 text-xs text-muted-foreground">
-                Search and filters will be available when
-                profile data is connected.
+                Search and filters will become available after
+                the Community API is connected.
               </p>
             </section>
 
@@ -62,12 +62,12 @@ export default function FindTeamPage() {
               </div>
 
               <h2 className="mt-4 text-xl font-semibold text-foreground">
-                No team members available
+                No users available
               </h2>
 
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                Student profiles will appear here after the
-                profiles endpoint is connected.
+                TUP users will appear here after the Community
+                endpoint is connected.
               </p>
             </section>
           </div>

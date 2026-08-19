@@ -16,17 +16,17 @@ export default function Hero() {
 
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
             <Link
-              href="/find-team"
+              href="/projects"
               className="rounded-lg bg-primary px-6 py-3 text-center text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Find a Team
+              Explore Projects
             </Link>
 
             <Link
-              href="/projects"
+              href="/find-team"
               className="rounded-lg border border-primary px-6 py-3 text-center text-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground"
             >
-              Explore Projects
+              Explore TUP Community
             </Link>
           </div>
         </div>

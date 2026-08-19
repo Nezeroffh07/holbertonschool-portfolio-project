@@ -1,15 +1,16 @@
 "use client";
 
-import { API_URL } from "@/lib/api";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
+  BriefcaseBusiness,
   Clock,
   FileText,
 } from "lucide-react";
 
 import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { API_URL, getAuthHeaders } from "@/lib/api";
 
 type User = {
   id: number;
@@ -23,6 +24,7 @@ type Application = {
   applicant_id: number;
   message: string | null;
   status: string;
+  role: string | null;
   created_at: string;
 };
 
@@ -45,24 +47,43 @@ export default function MyApplicationsPage() {
 
   useEffect(() => {
     async function getMyApplications() {
-      const savedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("access_token");
 
-      if (!savedUser) {
-        setError("User information could not be found.");
+      if (!token) {
+        setError("Please log in to view your applications.");
         setLoading(false);
         return;
       }
 
       try {
-        const user: User = JSON.parse(savedUser);
+        const userResponse = await fetch(`${API_URL}/me`, {
+          headers: getAuthHeaders(),
+        });
+
+        if (!userResponse.ok) {
+          throw new Error(
+            "Your account information could not be loaded."
+          );
+        }
+
+        const user: User = await userResponse.json();
 
         const response = await fetch(
-          `${API_URL}/users/${user.id}/applications`
+          `${API_URL}/users/${user.id}/applications`,
+          {
+            headers: getAuthHeaders(),
+          }
         );
 
         if (!response.ok) {
+          const errorData = await response
+            .json()
+            .catch(() => null);
+
           throw new Error(
-            "Applications could not be loaded."
+            typeof errorData?.detail === "string"
+              ? errorData.detail
+              : "Applications could not be loaded."
           );
         }
 
@@ -74,7 +95,10 @@ export default function MyApplicationsPage() {
             applicationData.map(async (application) => {
               try {
                 const projectResponse = await fetch(
-                  `${API_URL}/projects/${application.project_id}`
+                  `${API_URL}/projects/${application.project_id}`,
+                  {
+                    headers: getAuthHeaders(),
+                  }
                 );
 
                 if (!projectResponse.ok) {
@@ -98,8 +122,12 @@ export default function MyApplicationsPage() {
           );
 
         setApplications(applicationsWithProjects);
-      } catch {
-        setError("Applications could not be loaded.");
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Applications could not be loaded."
+        );
       } finally {
         setLoading(false);
       }
@@ -128,7 +156,7 @@ export default function MyApplicationsPage() {
             )}
 
             {error && (
-              <p className="mt-8 text-destructive">
+              <p className="mt-8 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive">
                 {error}
               </p>
             )}
@@ -156,54 +184,84 @@ export default function MyApplicationsPage() {
                 </section>
               )}
 
-            {!loading && applications.length > 0 && (
-              <div className="mt-8 space-y-4">
-                {applications.map((application) => (
-                  <article
-                    key={application.id}
-                    className="rounded-xl border border-border bg-card p-6 shadow-sm"
-                  >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <Link
-                          href={`/projects/${application.project_id}`}
-                          className="text-xl font-semibold text-foreground hover:text-primary"
-                        >
-                          {application.projectTitle}
-                        </Link>
+            {!loading &&
+              !error &&
+              applications.length > 0 && (
+                <div className="mt-8 space-y-4">
+                  {applications.map((application) => (
+                    <article
+                      key={application.id}
+                      className="rounded-xl border border-border bg-card p-6 shadow-sm"
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <Link
+                            href={`/projects/${application.project_id}`}
+                            className="text-xl font-semibold text-foreground hover:text-primary"
+                          >
+                            {application.projectTitle}
+                          </Link>
 
-                        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="h-4 w-4" />
+                          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="h-4 w-4" />
 
-                          {new Date(
-                            application.created_at
-                          ).toLocaleDateString()}
+                            {new Date(
+                              application.created_at
+                            ).toLocaleDateString()}
+                          </div>
                         </div>
+
+                        <span
+                          className={`w-fit rounded-full px-3 py-1 text-xs font-medium capitalize ${
+                            application.status === "accepted"
+                              ? "bg-secondary text-secondary-foreground"
+                              : application.status === "rejected"
+                                ? "bg-destructive/10 text-destructive"
+                                : "bg-muted text-foreground"
+                          }`}
+                        >
+                          {application.status}
+                        </span>
                       </div>
 
-                      <span
-                        className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${
-                          application.status === "accepted"
-                            ? "bg-secondary text-secondary-foreground"
-                            : application.status === "rejected"
-                              ? "bg-destructive/10 text-destructive"
-                              : "bg-muted text-foreground"
-                        }`}
-                      >
-                        {application.status}
-                      </span>
-                    </div>
+                      <div className="mt-5 rounded-lg bg-background p-4">
+                        <p className="text-xs font-medium text-foreground">
+                          Application Message
+                        </p>
 
-                    <div className="mt-5 rounded-lg bg-background p-4">
-                      <p className="text-sm leading-6 text-muted-foreground">
-                        {application.message ||
-                          "No application message was provided."}
-                      </p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          {application.message ||
+                            "No application message was provided."}
+                        </p>
+                      </div>
+
+                      {application.status === "accepted" && (
+                        <div className="mt-4 flex items-start gap-3 rounded-lg bg-accent p-4">
+                          <BriefcaseBusiness className="mt-0.5 h-5 w-5 shrink-0 text-accent-foreground" />
+
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Team Role
+                            </p>
+
+                            <p className="mt-1 font-medium text-accent-foreground">
+                              {application.role ||
+                                "Role not assigned yet"}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      <Link
+                        href={`/projects/${application.project_id}`}
+                        className="mt-5 inline-block text-sm font-medium text-primary hover:underline"
+                      >
+                        View Project
+                      </Link>
+                    </article>
+                  ))}
+                </div>
+              )}
           </div>
         </main>
       </AuthenticatedLayout>

@@ -11,7 +11,7 @@ type NavbarProps = {
 const navigation = [
   { name: "Home", href: "/" },
   { name: "Projects", href: "/projects" },
-  { name: "Find Team", href: "/find-team" },
+  { name: "TUP Community", href: "/find-team" },
   { name: "About", href: "/about" },
 ];
 
