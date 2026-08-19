@@ -57,6 +57,10 @@ class User(Base):
         "Application", back_populates="applicant",
         cascade="all, delete-orphan"
     )
+    invitations_received = relationship(
+        "Invitation", back_populates="invited_user",
+        cascade="all, delete-orphan"
+    )
 
 
 class Skill(Base):
@@ -126,6 +130,10 @@ class Project(Base):
         "Application", back_populates="project",
         cascade="all, delete-orphan"
     )
+    invitations = relationship(
+        "Invitation", back_populates="project",
+        cascade="all, delete-orphan"
+    )
 
 
 class Application(Base):
@@ -147,3 +155,31 @@ class Application(Base):
 
     project = relationship("Project", back_populates="applications")
     applicant = relationship("User", back_populates="applications")
+
+
+class Invitation(Base):
+    """
+    Layihə sahibinin bir istifadəçini (adətən Community/profil siyahısından)
+    öz layihəsinə dəvət etməsi.
+
+    Application-dan fərqi: Application-da istifadəçi layihəyə müraciət edir,
+    Invitation-da isə layihə sahibi istifadəçini dəvət edir (əks istiqamət).
+    """
+    __tablename__ = "invitations"
+    __table_args__ = (
+        # eyni istifadəçi eyni layihəyə iki dəfə dəvət oluna bilməz
+        UniqueConstraint(
+            "project_id", "invited_user_id", name="uq_project_invited_user"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    invited_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    role = Column(String, nullable=True)
+    message = Column(Text, nullable=True)
+    status = Column(String, nullable=False, default="pending")  # pending | accepted | rejected
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project", back_populates="invitations")
+    invited_user = relationship("User", back_populates="invitations_received")
