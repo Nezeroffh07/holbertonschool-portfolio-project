@@ -14,19 +14,23 @@ import {
   LogOut,
   Mail,
   Pencil,
+  Shield,
   User,
   X,
-} from "lucide-react";
+} from "lucide-react";type UserData
 
 import {
   API_URL,
   getAuthHeaders,
 } from "@/lib/api";
 
+
+
 type UserData = {
   id: number;
   username: string;
   email: string;
+  is_admin: boolean;
 };
 
 type ProfileData = {
@@ -144,6 +148,21 @@ export default function UserSidebar() {
     profile?.full_name ||
     user?.username ||
     "User";
+      const displayName =
+    profile?.full_name ||
+    user?.username ||
+    "User";
+
+  const links = user?.is_admin
+    ? [
+        ...userLinks,
+        {
+          name: "Admin Panel",
+          href: "/admin",
+          icon: Shield,
+        },
+      ]
+    : userLinks;
 
   return (
     <>
@@ -238,7 +257,7 @@ export default function UserSidebar() {
         </div>
 
         <nav className="flex-1 space-y-2 overflow-y-auto p-4">
-          {userLinks.map((item) => {
+          {links.map((item) => {
             const Icon = item.icon;
 
             const isActive =
