@@ -17,7 +17,7 @@ import {
   Shield,
   User,
   X,
-} from "lucide-react";type UserData
+} from "lucide-react";
 
 import {
   API_URL,
@@ -132,6 +132,7 @@ export default function UserSidebar() {
     }
 
     loadUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     setIsOpen(false);
   }, [pathname]);
 
@@ -148,10 +149,7 @@ export default function UserSidebar() {
     profile?.full_name ||
     user?.username ||
     "User";
-      const displayName =
-    profile?.full_name ||
-    user?.username ||
-    "User";
+      
 
   const links = user?.is_admin
     ? [
