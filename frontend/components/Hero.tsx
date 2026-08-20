@@ -23,7 +23,7 @@ export default function Hero() {
           </div>
         </div>
 
-        <div className="hidden justify-center lg:flex">
+        <div className="order-first flex justify-center lg:order-none">
           <HeroIllustration />
         </div>
       </div>
