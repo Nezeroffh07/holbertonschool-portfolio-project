@@ -168,7 +168,7 @@ export default function UserSidebar() {
         type="button"
         onClick={() => setIsOpen(true)}
         aria-label="Open profile menu"
-        className="fixed right-16 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-[#16423C] hover:bg-secondary/80 md:hidden"
+        className="fixed right-16 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-[#16423C] hover:bg-secondary/80 md:hidden"
       >
         <User className="h-5 w-5" />
       </button>
