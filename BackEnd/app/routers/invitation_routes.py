@@ -83,6 +83,12 @@ def invite_user_to_project(
             detail="Özünüzü öz layihənizə dəvət edə bilməzsiniz",
         )
 
+    if payload.role_id is not None and payload.role_id not in {r.id for r in project.required_roles}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Seçdiyiniz rol bu layihənin lazım olan rolları arasında deyil",
+        )
+
     # Artıq komandada olan istifadəçini yenidən dəvət etməyin qarşısını alırıq
     already_member = (
         db.query(models.Application)
@@ -117,7 +123,7 @@ def invite_user_to_project(
                 detail="Bu istifadəçi artıq bu layihəyə dəvət olunub",
             )
         existing_invitation.status = "pending"
-        existing_invitation.role = payload.role
+        existing_invitation.role_id = payload.role_id
         existing_invitation.message = payload.message
         db.commit()
         db.refresh(existing_invitation)
@@ -126,7 +132,7 @@ def invite_user_to_project(
     invitation = models.Invitation(
         project_id=project_id,
         invited_user_id=payload.invited_user_id,
-        role=payload.role,
+        role_id=payload.role_id,
         message=payload.message,
     )
     db.add(invitation)
@@ -164,6 +170,7 @@ def list_my_invitations(
             project_title=inv.project.title,
             owner_id=inv.project.owner_id,
             owner_username=inv.project.owner.username,
+            role_id=inv.role_id,
             role=inv.role,
             message=inv.message,
             status=inv.status,
@@ -243,15 +250,15 @@ def update_invitation_status(
         )
         if application:
             application.status = "accepted"
-            if invitation.role:
-                application.role = invitation.role
+            if invitation.role_id is not None:
+                application.role_id = invitation.role_id
         else:
             application = models.Application(
                 project_id=invitation.project_id,
                 applicant_id=invitation.invited_user_id,
                 message=invitation.message or "Dəvət qəbul edildi",
                 status="accepted",
-                role=invitation.role,
+                role_id=invitation.role_id,
             )
             db.add(application)
 

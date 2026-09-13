@@ -28,17 +28,17 @@ def _get_project_or_404(project_id: int, db: Session) -> models.Project:
     return project
 
 
-def _get_skills_or_400(skill_ids: list[int], db: Session) -> list[models.Skill]:
-    if not skill_ids:
+def _get_roles_or_400(role_ids: list[int], db: Session) -> list[models.Role]:
+    if not role_ids:
         return []
-    skills = db.query(models.Skill).filter(models.Skill.id.in_(skill_ids)).all()
-    missing = set(skill_ids) - {s.id for s in skills}
+    roles = db.query(models.Role).filter(models.Role.id.in_(role_ids)).all()
+    missing = set(role_ids) - {r.id for r in roles}
     if missing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Bu skill_id-lər mövcud deyil: {sorted(missing)}",
+            detail=f"Bu role_id-lər mövcud deyil: {sorted(missing)}",
         )
-    return skills
+    return roles
 
 
 @router.get(
@@ -58,7 +58,7 @@ def list_projects(
     status_filter: str | None = Query(
         default=None, alias="status", pattern=schemas.PROJECT_STATUS_PATTERN
     ),
-    skill_id: int | None = Query(default=None, description="Bu bacarığı tələb edən layihələr"),
+    role_id: int | None = Query(default=None, description="Bu rolu tələb edən layihələr"),
     owner_id: int | None = Query(default=None, description="Bu istifadəçinin sahib olduğu layihələr"),
     limit: int = Query(default=20, ge=1, le=100, description="Bir səhifədə neçə layihə"),
     offset: int = Query(default=0, ge=0, description="Neçə layihə buraxılsın"),
@@ -68,8 +68,8 @@ def list_projects(
         q = q.filter(models.Project.title.ilike(f"%{search}%"))
     if status_filter:
         q = q.filter(models.Project.status == status_filter)
-    if skill_id:
-        q = q.filter(models.Project.required_skills.any(models.Skill.id == skill_id))
+    if role_id:
+        q = q.filter(models.Project.required_roles.any(models.Role.id == role_id))
     if owner_id:
         q = q.filter(models.Project.owner_id == owner_id)
 
@@ -104,7 +104,7 @@ def create_project(
     db: Session = Depends(get_db),
     token_user: models.User = Depends(get_current_user),
 ):
-    skills = _get_skills_or_400(payload.required_skill_ids, db)
+    roles = _get_roles_or_400(payload.required_role_ids, db)
 
     project = models.Project(
         title=payload.title,
@@ -112,7 +112,7 @@ def create_project(
         open_positions=payload.open_positions,
         application_deadline=payload.application_deadline,
         owner_id=token_user.id,
-        required_skills=skills,
+        required_roles=roles,
     )
     db.add(project)
     db.commit()
@@ -138,9 +138,9 @@ def update_project(
     )
     data = payload.model_dump(exclude_unset=True)
 
-    if "required_skill_ids" in data:
-        skill_ids = data.pop("required_skill_ids")
-        project.required_skills = _get_skills_or_400(skill_ids, db)
+    if "required_role_ids" in data:
+        role_ids = data.pop("required_role_ids")
+        project.required_roles = _get_roles_or_400(role_ids, db)
 
     for field, value in data.items():
         setattr(project, field, value)

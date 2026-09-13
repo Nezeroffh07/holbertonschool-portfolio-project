@@ -62,7 +62,7 @@ def list_team_members(project_id: int, db: Session = Depends(get_db)):
             user_id=app.applicant.id,
             username=app.applicant.username,
             email=app.applicant.email,
-            role=app.role,
+            role=app.role,  # Role ORM obyekti (və ya None) — RoleResponse-a avtomatik çevrilir
             joined_at=app.created_at,
         )
         for app in accepted_applications
@@ -78,7 +78,7 @@ def list_team_members(project_id: int, db: Session = Depends(get_db)):
 def update_member_role(
     project_id: int,
     user_id: int,
-    payload: schemas.RoleUpdate,
+    payload: schemas.TeamRoleAssign,
     db: Session = Depends(get_db),
     token_user: models.User = Depends(get_current_user),
 ):
@@ -87,6 +87,12 @@ def update_member_role(
         token_user.id, project.owner_id,
         "Yalnız layihə sahibi komanda üzvlərinin rolunu dəyişə bilər",
     )
+
+    if payload.role_id not in {r.id for r in project.required_roles}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Seçdiyiniz rol bu layihənin lazım olan rolları arasında deyil",
+        )
 
     application = (
         db.query(models.Application)
@@ -103,7 +109,7 @@ def update_member_role(
             detail="Bu istifadəçi layihənin qəbul olunmuş komanda üzvü deyil",
         )
 
-    application.role = payload.role
+    application.role_id = payload.role_id
     db.commit()
     db.refresh(application)
 

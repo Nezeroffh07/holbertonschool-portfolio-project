@@ -83,9 +83,16 @@ def apply_to_project(
             detail="Bu layihənin müraciət qəbulu tarixi bitib",
         )
 
+    if payload.role_id not in {r.id for r in project.required_roles}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Seçdiyiniz rol bu layihənin lazım olan rolları arasında deyil",
+        )
+
     application = models.Application(
         project_id=project_id,
         applicant_id=applicant_id,
+        role_id=payload.role_id,
         message=payload.message,
     )
     db.add(application)

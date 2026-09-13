@@ -75,6 +75,31 @@ class SkillResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ---------- Role (layihələrin ehtiyacı olan mövqələr) ----------
+
+class RoleCreate(BaseModel):
+    """Yeni rol yaratmaq üçün (yalnız admin)."""
+    name: str = Field(min_length=1, max_length=50, examples=["Frontend Developer"])
+    description: Optional[str] = Field(
+        default=None, max_length=1000,
+        description="Bu rolda olan komanda üzvü nə etməlidir — admin yazır.",
+        examples=["React ilə UI komponentləri qurur, dizaynı koda çevirir."],
+    )
+
+
+class RoleDescriptionUpdate(BaseModel):
+    """Mövcud rolun təsvirini yeniləmək üçün (yalnız admin)."""
+    description: Optional[str] = Field(default=None, max_length=1000)
+
+
+class RoleResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ---------- Profile ----------
 
 class ProfileUpsert(BaseModel):
@@ -154,7 +179,10 @@ class ProjectCreate(BaseModel):
     description: str = Field(min_length=10, max_length=3000)
     open_positions: int = Field(default=1, ge=1, le=50)
     application_deadline: Optional[date] = None
-    required_skill_ids: list[int] = Field(default_factory=list)
+    required_role_ids: list[int] = Field(
+        default_factory=list,
+        description="Layihə üçün lazım olan rolların id-ləri (bax: GET /roles)",
+    )
     owner_id: Optional[int] = Field(
         default=None,
         deprecated=True,
@@ -173,7 +201,7 @@ class ProjectUpdate(BaseModel):
     open_positions: Optional[int] = Field(default=None, ge=1, le=50)
     application_deadline: Optional[date] = None
     status: Optional[str] = Field(default=None, pattern=PROJECT_STATUS_PATTERN)
-    required_skill_ids: Optional[list[int]] = None
+    required_role_ids: Optional[list[int]] = None
 
 
 class ProjectResponse(BaseModel):
@@ -185,7 +213,7 @@ class ProjectResponse(BaseModel):
     status: str
     owner_id: int
     created_at: datetime
-    required_skills: list[SkillResponse]
+    required_roles: list[RoleResponse]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -202,6 +230,9 @@ class ApplicationCreate(BaseModel):
             "üçün saxlanılıb."
         ),
     )
+    role_id: int = Field(
+        description="Müraciət etdiyiniz rol — layihənin lazım olan rollarından biri olmalıdır",
+    )
     message: Optional[str] = Field(default=None, max_length=1000)
 
 
@@ -215,7 +246,8 @@ class ApplicationResponse(BaseModel):
     applicant_id: int
     message: Optional[str]
     status: str
-    role: Optional[str] = None
+    role_id: Optional[int] = None
+    role: Optional[RoleResponse] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -225,8 +257,9 @@ class ApplicationResponse(BaseModel):
 
 class InvitationCreate(BaseModel):
     invited_user_id: int
-    role: Optional[str] = Field(
-        default=None, max_length=50, examples=["Frontend Developer"]
+    role_id: Optional[int] = Field(
+        default=None,
+        description="Dəvət olunan istifadəçiyə təklif olunan rol (layihənin lazım olan rollarından biri)",
     )
     message: Optional[str] = Field(default=None, max_length=1000)
 
@@ -239,7 +272,8 @@ class InvitationResponse(BaseModel):
     id: int
     project_id: int
     invited_user_id: int
-    role: Optional[str]
+    role_id: Optional[int]
+    role: Optional[RoleResponse] = None
     message: Optional[str]
     status: str
     created_at: datetime
@@ -254,7 +288,8 @@ class InvitationMeResponse(BaseModel):
     project_title: str
     owner_id: int
     owner_username: str
-    role: Optional[str]
+    role_id: Optional[int]
+    role: Optional[RoleResponse] = None
     message: Optional[str]
     status: str
     created_at: datetime
@@ -271,12 +306,14 @@ class TeamMemberResponse(BaseModel):
     user_id: int
     username: str
     email: EmailStr
-    role: Optional[str] = None
+    role: Optional[RoleResponse] = None
     joined_at: datetime
 
 
-class RoleUpdate(BaseModel):
-    role: str = Field(min_length=1, max_length=50, examples=["Frontend Developer"])
+class TeamRoleAssign(BaseModel):
+    """Komanda üzvünə rol təyin etmək/dəyişmək üçün (yalnız layihə sahibi).
+    role_id layihənin required_roles siyahısından biri olmalıdır."""
+    role_id: int = Field(examples=[1])
 
 
 # ---------- Admin Panel ----------
@@ -308,3 +345,4 @@ class AdminStatsResponse(BaseModel):
     open_projects: int
     total_applications: int
     total_skills: int
+    total_roles: int

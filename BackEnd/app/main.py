@@ -17,6 +17,7 @@ from app.database import Base, engine
 from app.routers import (
     auth_routes,
     skills_routes,
+    role_routes,
     profile_routes,
     project_routes,
     application_routes,
@@ -112,6 +113,7 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(auth_routes.router)
 app.include_router(skills_routes.router)
+app.include_router(role_routes.router)
 app.include_router(profile_routes.router)
 app.include_router(project_routes.router)
 app.include_router(application_routes.router)

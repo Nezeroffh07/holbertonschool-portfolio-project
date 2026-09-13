@@ -2,12 +2,15 @@
 SQLAlchemy DB modelləri — Sprint 2: Core Features.
 
 Sprint 1-də yalnız User var idi. Bu sprintdə əlavə olunur:
-  - Skill            (bacarıq: "Python", "Figma" və s. — həm Profile,
-                       həm Project tərəfindən istifadə olunur)
+  - Skill            (bacarıq: "Python", "Figma" və s. — Profile tərəfindən
+                       istifadə olunur)
+  - Role             (layihənin ehtiyacı olan mövqe: "Frontend Developer" və s.
+                       — admin idarə edir, description ilə "bu rol nə etməlidir"
+                       izah olunur; Project və Application tərəfindən istifadə olunur)
   - Profile          (istifadəçinin bio, universitet/fakültə, portfolio linki)
-  - Project          (layihə: başlıq, təsvir, tələb olunan bacarıqlar,
+  - Project          (layihə: başlıq, təsvir, tələb olunan rollar,
                        boş mövqelər, son müraciət tarixi, sahibi)
-  - Application      (istifadəçinin layihəyə müraciəti və statusu)
+  - Application      (istifadəçinin layihəyə, seçdiyi rol üzrə müraciəti və statusu)
 
 Qeyd — TeamMember üçün ayrıca cədvəl açılmayıb: Application.status == "accepted"
 olan sətirlər həmin layihənin komanda üzvləri kimi oxunur. Bu, eyni məlumatı
@@ -78,12 +81,29 @@ profile_skills = Table(
     Column("skill_id", ForeignKey("skills.id"), primary_key=True),
 )
 
-# Project <-> Skill (çox-çoxa: bir layihənin bir neçə tələb olunan bacarığı)
-project_skills = Table(
-    "project_skills",
+class Role(Base):
+    """
+    Layihələrin ehtiyacı olan mövqelər kataloqu (məs. "Frontend Developer",
+    "Backend Developer", "UI/UX Designer") — Skill kimi mərkəzləşdirilmiş,
+    admin idarə edir.
+
+    description: bu rolda olan komanda üzvünün nə etməli olduğunu izah edən
+    mətn — admin tərəfindən yazılır/yenilənir. Frontend layihə səhifəsində
+    rolun üstünə basanda bu mətn göstərilir.
+    """
+    __tablename__ = "roles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    description = Column(Text, nullable=True)
+
+
+# Project <-> Role (çox-çoxa: bir layihənin bir neçə lazım olan rolu)
+project_roles = Table(
+    "project_roles",
     Base.metadata,
     Column("project_id", ForeignKey("projects.id"), primary_key=True),
-    Column("skill_id", ForeignKey("skills.id"), primary_key=True),
+    Column("role_id", ForeignKey("roles.id"), primary_key=True),
 )
 
 
@@ -129,7 +149,7 @@ class Project(Base):
     is_deleted = Column(Boolean, nullable=False, default=False)
 
     owner = relationship("User", back_populates="projects")
-    required_skills = relationship("Skill", secondary=project_skills)
+    required_roles = relationship("Role", secondary=project_roles)
     applications = relationship("Application", back_populates="project")
     invitations = relationship("Invitation", back_populates="project")
 
@@ -146,13 +166,15 @@ class Application(Base):
     applicant_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     message = Column(Text, nullable=True)
     status = Column(String, nullable=False, default="pending")  # pending | accepted | rejected
-    # Yalnız status="accepted" olanda mənalıdır — komanda üzvünün layihədəki rolu
-    # (məs. "Frontend Developer", "Team Lead"). Sahib bunu Dashboard-dan təyin edir.
-    role = Column(String, nullable=True)
+    # Müraciətçinin seçdiyi rol — layihənin required_roles siyahısından biri
+    # olmalıdır (bax: application_routes.apply_to_project). Qəbul olunandan
+    # sonra sahib bunu Dashboard-dan (team_routes) dəyişə bilər.
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     project = relationship("Project", back_populates="applications")
     applicant = relationship("User", back_populates="applications")
+    role = relationship("Role")
 
 
 class Invitation(Base):
@@ -174,10 +196,11 @@ class Invitation(Base):
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     invited_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    role = Column(String, nullable=True)
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
     message = Column(Text, nullable=True)
     status = Column(String, nullable=False, default="pending")  # pending | accepted | rejected
     created_at = Column(DateTime, default=datetime.utcnow)
 
     project = relationship("Project", back_populates="invitations")
     invited_user = relationship("User", back_populates="invitations_received")
+    role = relationship("Role")

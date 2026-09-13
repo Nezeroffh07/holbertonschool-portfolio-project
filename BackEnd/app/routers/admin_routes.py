@@ -38,6 +38,7 @@ def get_stats(
         open_projects=db.query(models.Project).filter(models.Project.status == "open").count(),
         total_applications=db.query(models.Application).count(),
         total_skills=db.query(models.Skill).count(),
+        total_roles=db.query(models.Role).count(),
     )
 
 
