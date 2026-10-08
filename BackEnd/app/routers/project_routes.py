@@ -41,6 +41,19 @@ def _get_roles_or_400(role_ids: list[int], db: Session) -> list[models.Role]:
     return roles
 
 
+def _get_skills_or_400(skill_ids: list[int], db: Session) -> list[models.Skill]:
+    if not skill_ids:
+        return []
+    skills = db.query(models.Skill).filter(models.Skill.id.in_(skill_ids)).all()
+    missing = set(skill_ids) - {s.id for s in skills}
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Bu skill_id-lər mövcud deyil: {sorted(missing)}",
+        )
+    return skills
+
+
 @router.get(
     "",
     response_model=list[schemas.ProjectResponse],
@@ -59,6 +72,7 @@ def list_projects(
         default=None, alias="status", pattern=schemas.PROJECT_STATUS_PATTERN
     ),
     role_id: int | None = Query(default=None, description="Bu rolu tələb edən layihələr"),
+    skill_id: int | None = Query(default=None, description="Bu bacarığı tələb edən layihələr"),
     owner_id: int | None = Query(default=None, description="Bu istifadəçinin sahib olduğu layihələr"),
     limit: int = Query(default=20, ge=1, le=100, description="Bir səhifədə neçə layihə"),
     offset: int = Query(default=0, ge=0, description="Neçə layihə buraxılsın"),
@@ -70,6 +84,8 @@ def list_projects(
         q = q.filter(models.Project.status == status_filter)
     if role_id:
         q = q.filter(models.Project.required_roles.any(models.Role.id == role_id))
+    if skill_id:
+        q = q.filter(models.Project.required_skills.any(models.Skill.id == skill_id))
     if owner_id:
         q = q.filter(models.Project.owner_id == owner_id)
 
@@ -105,6 +121,13 @@ def create_project(
     token_user: models.User = Depends(get_current_user),
 ):
     roles = _get_roles_or_400(payload.required_role_ids, db)
+    skills = _get_skills_or_400(payload.required_skill_ids, db)
+
+    # Əgər ayrıca rol seçilməyibsə amma skill-lər seçilibsə, həmin skill-lərin rollarını avtomatik qoş
+    if not roles and skills:
+        role_ids = {s.role_id for s in skills if s.role_id is not None}
+        if role_ids:
+            roles = db.query(models.Role).filter(models.Role.id.in_(role_ids)).all()
 
     project = models.Project(
         title=payload.title,
@@ -113,6 +136,7 @@ def create_project(
         application_deadline=payload.application_deadline,
         owner_id=token_user.id,
         required_roles=roles,
+        required_skills=skills,
     )
     db.add(project)
     db.commit()
@@ -140,7 +164,19 @@ def update_project(
 
     if "required_role_ids" in data:
         role_ids = data.pop("required_role_ids")
-        project.required_roles = _get_roles_or_400(role_ids, db)
+        if role_ids is not None:
+            project.required_roles = _get_roles_or_400(role_ids, db)
+
+    if "required_skill_ids" in data:
+        skill_ids = data.pop("required_skill_ids")
+        if skill_ids is not None:
+            skills = _get_skills_or_400(skill_ids, db)
+            project.required_skills = skills
+            # Əgər layihənin rolları boşdursa, skkill-lərin rollarını əlavə et
+            if not project.required_roles and skills:
+                role_ids = {s.role_id for s in skills if s.role_id is not None}
+                if role_ids:
+                    project.required_roles = db.query(models.Role).filter(models.Role.id.in_(role_ids)).all()
 
     for field, value in data.items():
         setattr(project, field, value)

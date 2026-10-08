@@ -113,8 +113,16 @@ class Role(Base):
 project_roles = Table(
     "project_roles",
     Base.metadata,
-    Column("project_id", ForeignKey("projects.id"), primary_key=True),
-    Column("role_id", ForeignKey("roles.id"), primary_key=True),
+    Column("project_id", ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True),
+    Column("role_id", ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
+)
+
+# Project <-> Skill (çox-çoxa: bir layihənin bir neçə tələb olunan bacarığı)
+project_skills = Table(
+    "project_skills",
+    Base.metadata,
+    Column("project_id", ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True),
+    Column("skill_id", ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True),
 )
 
 
@@ -161,6 +169,7 @@ class Project(Base):
 
     owner = relationship("User", back_populates="projects")
     required_roles = relationship("Role", secondary=project_roles)
+    required_skills = relationship("Skill", secondary=project_skills)
     applications = relationship("Application", back_populates="project")
     invitations = relationship("Invitation", back_populates="project")
 

@@ -36,6 +36,12 @@ type User = {
   email: string;
 };
 
+type Role = {
+  id: number;
+  name: string;
+  description?: string | null;
+};
+
 type Project = {
   id: number;
   title: string;
@@ -45,7 +51,8 @@ type Project = {
   status: string;
   owner_id: number;
   created_at: string;
-  required_skills: Skill[];
+  required_skills?: Skill[];
+  required_roles?: Role[];
 };
 
 type Application = {
@@ -282,11 +289,13 @@ export default function ProjectDetailsPage() {
     project?.status.toLowerCase() === "open";
 
   const visibleSkills =
-    project?.required_skills.filter(
+    (project?.required_skills || []).filter(
       (skill) =>
-        skill.name.trim().toLowerCase() !==
+        skill.name?.trim().toLowerCase() !==
         "string"
-    ) || [];
+    );
+
+  const visibleRoles = project?.required_roles || [];
 
   return (
     <ProtectedRoute>
@@ -345,6 +354,25 @@ export default function ProjectDetailsPage() {
                       {project.description}
                     </p>
                   </section>
+
+                  {visibleRoles.length > 0 && (
+                    <section className="mt-8">
+                      <h2 className="text-xl font-semibold text-foreground">
+                        Required Roles
+                      </h2>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {visibleRoles.map((role) => (
+                          <span
+                            key={role.id}
+                            className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
+                          >
+                            {role.name}
+                          </span>
+                        ))}
+                      </div>
+                    </section>
+                  )}
 
                   <section className="mt-8">
                     <h2 className="text-xl font-semibold text-foreground">

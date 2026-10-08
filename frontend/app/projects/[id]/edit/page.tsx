@@ -42,7 +42,7 @@ type Project = {
   application_deadline: string | null;
   status: string;
   owner_id: number;
-  required_skills: Skill[];
+  required_skills?: Skill[];
 };
 
 const projectSchema = z.object({
@@ -220,7 +220,7 @@ export default function EditProjectPage() {
             project.status === "closed"
               ? "closed"
               : "open",
-          skillIds: project.required_skills.map(
+          skillIds: (project.required_skills || []).map(
             (skill) => String(skill.id)
           ),
         });

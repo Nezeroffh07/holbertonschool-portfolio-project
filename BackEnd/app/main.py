@@ -126,6 +126,21 @@ with engine.connect() as _conn:
         except Exception:
             pass
 
+    # project_skills cədvəlinin mövcudluğunu təmin edirik:
+    try:
+        _conn.execute(
+            text("""
+                CREATE TABLE IF NOT EXISTS project_skills (
+                    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    skill_id INTEGER NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
+                    PRIMARY KEY (project_id, skill_id)
+                );
+            """)
+        )
+        _conn.commit()
+    except Exception:
+        pass
+
 app.include_router(auth_routes.router)
 app.include_router(skills_routes.router)
 app.include_router(role_routes.router)

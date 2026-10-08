@@ -38,7 +38,8 @@ type Project = {
   application_deadline: string | null;
   status: string;
   owner_id: number;
-  required_skills: Skill[];
+  required_skills?: Skill[];
+  required_roles?: { id: number; name: string }[];
 };
 
 export default function MyProjectsPage() {
@@ -245,16 +246,22 @@ export default function MyProjectsPage() {
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {project.required_skills.map(
-                        (skill) => (
-                          <span
-                            key={skill.id}
-                            className="rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground"
-                          >
-                            {skill.name}
-                          </span>
-                        )
-                      )}
+                      {(project.required_roles || []).map((role) => (
+                        <span
+                          key={`role-${role.id}`}
+                          className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+                        >
+                          {role.name}
+                        </span>
+                      ))}
+                      {(project.required_skills || []).map((skill) => (
+                        <span
+                          key={`skill-${skill.id}`}
+                          className="rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground"
+                        >
+                          {skill.name}
+                        </span>
+                      ))}
                     </div>
 
                     <p className="mt-4 text-sm text-foreground">

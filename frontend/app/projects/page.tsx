@@ -22,7 +22,8 @@ type Project = {
   open_positions: number;
   application_deadline: string | null;
   status: string;
-  required_skills: Skill[];
+  required_skills?: Skill[];
+  required_roles?: { id: number; name: string }[];
 };
 
 export default function ProjectsPage() {
@@ -101,7 +102,7 @@ export default function ProjectsPage() {
 
     const matchesSkill =
       selectedSkill === "all" ||
-      project.required_skills.some(
+      (project.required_skills || []).some(
         (skill) => String(skill.id) === selectedSkill
       );
 
@@ -299,9 +300,17 @@ export default function ProjectsPage() {
                       </p>
 
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {project.required_skills.map((skill) => (
+                        {(project.required_roles || []).map((role) => (
                           <span
-                            key={skill.id}
+                            key={`role-${role.id}`}
+                            className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+                          >
+                            {role.name}
+                          </span>
+                        ))}
+                        {(project.required_skills || []).map((skill) => (
+                          <span
+                            key={`skill-${skill.id}`}
                             className="rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground"
                           >
                             {skill.name}

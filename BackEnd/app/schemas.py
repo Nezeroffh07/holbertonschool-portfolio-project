@@ -192,6 +192,10 @@ class ProjectCreate(BaseModel):
         default_factory=list,
         description="Layihə üçün lazım olan rolların id-ləri (bax: GET /roles)",
     )
+    required_skill_ids: list[int] = Field(
+        default_factory=list,
+        description="Layihə üçün lazım olan bacarıqların id-ləri (bax: GET /skills)",
+    )
     owner_id: Optional[int] = Field(
         default=None,
         deprecated=True,
@@ -211,6 +215,7 @@ class ProjectUpdate(BaseModel):
     application_deadline: Optional[date] = None
     status: Optional[str] = Field(default=None, pattern=PROJECT_STATUS_PATTERN)
     required_role_ids: Optional[list[int]] = None
+    required_skill_ids: Optional[list[int]] = None
 
 
 class ProjectResponse(BaseModel):
@@ -222,7 +227,8 @@ class ProjectResponse(BaseModel):
     status: str
     owner_id: int
     created_at: datetime
-    required_roles: list[RoleResponse]
+    required_roles: list[RoleResponse] = []
+    required_skills: list[SkillResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
 
