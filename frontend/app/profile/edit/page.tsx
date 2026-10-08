@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +21,8 @@ type User = {
 type Skill = {
   id: number;
   name: string;
+  role_id?: number | null;
+  role_name?: string | null;
 };
 
 type Profile = {
@@ -99,6 +101,18 @@ export default function EditProfilePage() {
   const [pageError, setPageError] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  const skillsByRole = useMemo(() => {
+    const map = new Map<string, Skill[]>();
+    for (const skill of skills) {
+      const group = skill.role_name || "General / Other";
+      if (!map.has(group)) {
+        map.set(group, []);
+      }
+      map.get(group)!.push(skill);
+    }
+    return map;
+  }, [skills]);
 
   const {
     register,
@@ -524,28 +538,44 @@ export default function EditProfilePage() {
                   </label>
                 </div>
 
-                <div className="mt-6 space-y-3">
+                <div className="mt-6 space-y-4">
                   <Label>Skills</Label>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {skills.map((skill) => (
-                      <label
-                        key={skill.id}
-                        className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 hover:bg-secondary"
-                      >
-                        <input
-                          type="checkbox"
-                          value={String(skill.id)}
-                          className="h-4 w-4 accent-primary"
-                          {...register("skillIds")}
-                        />
+                  {skills.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No skills available yet.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {Array.from(skillsByRole.entries()).map(([roleName, groupSkills]) => (
+                        <div
+                          key={roleName}
+                          className="space-y-2 rounded-xl border border-border bg-card/40 p-3.5"
+                        >
+                          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                            {roleName}
+                          </p>
+                          <div className="grid gap-2.5 sm:grid-cols-2">
+                            {groupSkills.map((skill) => (
+                              <label
+                                key={skill.id}
+                                className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-2.5 hover:bg-secondary transition-colors"
+                              >
+                                <input
+                                  type="checkbox"
+                                  value={String(skill.id)}
+                                  className="h-4 w-4 accent-primary"
+                                  {...register("skillIds")}
+                                />
 
-                        <span className="text-sm text-foreground">
-                          {skill.name}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+                                <span className="text-sm text-foreground">
+                                  {skill.name}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {errors.skillIds && (
                     <p className="text-sm text-destructive">

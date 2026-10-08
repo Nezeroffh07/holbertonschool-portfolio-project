@@ -4,6 +4,7 @@ import {
   FormEvent,
   useEffect,
   useState,
+  useMemo,
 } from "react";
 import {
   ExternalLink,
@@ -24,6 +25,8 @@ import {
 type Skill = {
   id: number;
   name: string;
+  role_id?: number | null;
+  role_name?: string | null;
 };
 
 type CommunityMember = {
@@ -56,6 +59,18 @@ export default function CommunityPage() {
     useState(true);
 
   const [error, setError] = useState("");
+
+  const skillsByRole = useMemo(() => {
+    const map = new Map<string, Skill[]>();
+    for (const skill of skills) {
+      const group = skill.role_name || "General / Other";
+      if (!map.has(group)) {
+        map.set(group, []);
+      }
+      map.get(group)!.push(skill);
+    }
+    return map;
+  }, [skills]);
 
   async function loadCommunity(
     search = "",
@@ -209,13 +224,17 @@ export default function CommunityPage() {
                       : "All skills"}
                   </option>
 
-                  {skills.map((skill) => (
-                    <option
-                      key={skill.id}
-                      value={String(skill.id)}
-                    >
-                      {skill.name}
-                    </option>
+                  {Array.from(skillsByRole.entries()).map(([roleName, groupSkills]) => (
+                    <optgroup key={roleName} label={roleName}>
+                      {groupSkills.map((skill) => (
+                        <option
+                          key={skill.id}
+                          value={String(skill.id)}
+                        >
+                          {skill.name}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
 

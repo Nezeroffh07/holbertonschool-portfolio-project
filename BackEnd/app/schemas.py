@@ -66,11 +66,19 @@ class LoginResponse(BaseModel):
 
 class SkillCreate(BaseModel):
     name: str = Field(min_length=1, max_length=50)
+    role_id: Optional[int] = Field(default=None, description="Bu bacarığın aid olduğu rolun ID-si")
+
+
+class SkillUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    role_id: Optional[int] = Field(default=None, description="Bu bacarığın aid olduğu rolun ID-si")
 
 
 class SkillResponse(BaseModel):
     id: int
     name: str
+    role_id: Optional[int] = None
+    role_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -96,6 +104,7 @@ class RoleResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
+    skills: list[SkillResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
 

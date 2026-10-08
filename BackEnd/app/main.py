@@ -12,6 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.utils import get_openapi
+from sqlalchemy import text
 
 from app.database import Base, engine
 from app.routers import (
@@ -110,6 +111,20 @@ app.add_middleware(
 )
 
 Base.metadata.create_all(bind=engine)
+
+# Role_id sütununu skills cədvəlinə əlavə edirik (əgər mövcud deyilsə):
+with engine.connect() as _conn:
+    try:
+        _conn.execute(
+            text("ALTER TABLE skills ADD COLUMN IF NOT EXISTS role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL;")
+        )
+        _conn.commit()
+    except Exception:
+        try:
+            _conn.execute(text("ALTER TABLE skills ADD COLUMN role_id INTEGER;"))
+            _conn.commit()
+        except Exception:
+            pass
 
 app.include_router(auth_routes.router)
 app.include_router(skills_routes.router)

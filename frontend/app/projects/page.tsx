@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { FolderOpen, Search } from "lucide-react";
 import { API_URL } from "@/lib/api";
 
@@ -11,6 +11,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 type Skill = {
   id: number;
   name: string;
+  role_id?: number | null;
+  role_name?: string | null;
 };
 
 type Project = {
@@ -33,6 +35,18 @@ export default function ProjectsPage() {
   const [searchText, setSearchText] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedSkill, setSelectedSkill] = useState("all");
+
+  const skillsByRole = useMemo(() => {
+    const map = new Map<string, Skill[]>();
+    for (const skill of skills) {
+      const group = skill.role_name || "General / Other";
+      if (!map.has(group)) {
+        map.set(group, []);
+      }
+      map.get(group)!.push(skill);
+    }
+    return map;
+  }, [skills]);
 
   useEffect(() => {
     async function loadPageData() {
@@ -181,13 +195,17 @@ export default function ProjectsPage() {
                   >
                     <option value="all">All skills</option>
 
-                    {skills.map((skill) => (
-                      <option
-                        key={skill.id}
-                        value={String(skill.id)}
-                      >
-                        {skill.name}
-                      </option>
+                    {Array.from(skillsByRole.entries()).map(([roleName, groupSkills]) => (
+                      <optgroup key={roleName} label={roleName}>
+                        {groupSkills.map((skill) => (
+                          <option
+                            key={skill.id}
+                            value={String(skill.id)}
+                          >
+                            {skill.name}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </div>

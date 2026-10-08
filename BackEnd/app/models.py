@@ -71,6 +71,15 @@ class Skill(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
+    role_id = Column(
+        Integer, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
+    role = relationship("Role", back_populates="skills")
+
+    @property
+    def role_name(self) -> str | None:
+        return self.role.name if self.role else None
 
 
 # Profile <-> Skill (çox-çoxa: bir profilin bir neçə bacarığı ola bilər)
@@ -96,6 +105,8 @@ class Role(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(Text, nullable=True)
+
+    skills = relationship("Skill", back_populates="role")
 
 
 # Project <-> Role (çox-çoxa: bir layihənin bir neçə lazım olan rolu)
