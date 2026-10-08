@@ -260,8 +260,11 @@ export default function EditProjectPage() {
         application_deadline:
           formData.applicationDeadline || null,
         status: formData.status,
-        required_skill_ids:
-          formData.skillIds.map(Number),
+        required_skill_ids: Array.isArray(formData.skillIds)
+          ? formData.skillIds.map(Number)
+          : formData.skillIds
+          ? [Number(formData.skillIds)]
+          : [],
       };
 
       const response = await fetch(

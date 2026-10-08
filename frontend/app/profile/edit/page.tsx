@@ -278,7 +278,11 @@ export default function EditProfilePage() {
           formData.previousProjects.trim() ||
           null,
         is_public: formData.isPublic,
-        skill_ids: formData.skillIds.map(Number),
+        skill_ids: Array.isArray(formData.skillIds)
+          ? formData.skillIds.map(Number)
+          : formData.skillIds
+          ? [Number(formData.skillIds)]
+          : [],
       };
 
       const response = await fetch(

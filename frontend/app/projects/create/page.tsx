@@ -224,11 +224,14 @@ export default function CreateProjectPage() {
           formData.openPositions
         ),
         application_deadline:
-          formData.deadline,
-        required_skill_ids:
-          formData.requiredSkillIds.map(
-            Number
-          ),
+          formData.deadline || null,
+        required_skill_ids: Array.isArray(
+          formData.requiredSkillIds
+        )
+          ? formData.requiredSkillIds.map(Number)
+          : formData.requiredSkillIds
+          ? [Number(formData.requiredSkillIds)]
+          : [],
         owner_id: user.id,
       };
 

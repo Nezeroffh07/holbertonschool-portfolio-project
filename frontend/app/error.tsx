@@ -47,12 +47,13 @@ export default function ErrorBoundary({
           Try Again
         </Button>
 
-        <Button asChild variant="outline">
-          <Link href="/projects" className="inline-flex items-center gap-2">
-            <Home className="h-4 w-4" />
-            Projects
-          </Link>
-        </Button>
+        <Link
+          href="/projects"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
+        >
+          <Home className="h-4 w-4" />
+          Projects
+        </Link>
       </div>
     </div>
   );
