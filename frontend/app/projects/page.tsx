@@ -15,6 +15,12 @@ type Skill = {
   role_name?: string | null;
 };
 
+type Role = {
+  id: number;
+  name: string;
+  description?: string | null;
+};
+
 type Project = {
   id: number;
   title: string;
@@ -23,18 +29,20 @@ type Project = {
   application_deadline: string | null;
   status: string;
   required_skills?: Skill[];
-  required_roles?: { id: number; name: string }[];
+  required_roles?: Role[];
 };
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [searchText, setSearchText] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedRole, setSelectedRole] = useState("all");
   const [selectedSkill, setSelectedSkill] = useState("all");
 
   const skillsByRole = useMemo(() => {
@@ -52,10 +60,11 @@ export default function ProjectsPage() {
   useEffect(() => {
     async function loadPageData() {
       try {
-        const [projectsResponse, skillsResponse] =
+        const [projectsResponse, skillsResponse, rolesResponse] =
           await Promise.all([
             fetch(`${API_URL}/projects`),
             fetch(`${API_URL}/skills`),
+            fetch(`${API_URL}/roles`).catch(() => null),
           ]);
 
         if (!projectsResponse.ok) {
@@ -76,6 +85,13 @@ export default function ProjectsPage() {
           (firstSkill, secondSkill) =>
             firstSkill.name.localeCompare(secondSkill.name)
         );
+
+        if (rolesResponse && rolesResponse.ok) {
+          const rolesData: Role[] = await rolesResponse.json();
+          setRoles(
+            [...rolesData].sort((a, b) => a.name.localeCompare(b.name))
+          );
+        }
 
         setProjects(projectsData);
         setSkills(sortedSkills);
@@ -100,18 +116,28 @@ export default function ProjectsPage() {
       selectedStatus === "all" ||
       project.status === selectedStatus;
 
+    const matchesRole =
+      selectedRole === "all" ||
+      (project.required_roles || []).some(
+        (role) => String(role.id) === selectedRole
+      ) ||
+      (project.required_skills || []).some(
+        (skill) => String(skill.role_id) === selectedRole
+      );
+
     const matchesSkill =
       selectedSkill === "all" ||
       (project.required_skills || []).some(
         (skill) => String(skill.id) === selectedSkill
       );
 
-    return matchesSearch && matchesStatus && matchesSkill;
+    return matchesSearch && matchesStatus && matchesRole && matchesSkill;
   });
 
   function clearFilters() {
     setSearchText("");
     setSelectedStatus("all");
+    setSelectedRole("all");
     setSelectedSkill("all");
   }
 
@@ -154,8 +180,8 @@ export default function ProjectsPage() {
 
             {!loading && !error && projects.length > 0 && (
               <section className="mt-8 rounded-xl border border-border bg-card p-5 shadow-sm">
-                <div className="grid gap-4 lg:grid-cols-[1fr_220px_220px]">
-                  <div className="relative">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_170px_180px_180px]">
+                  <div className="relative sm:col-span-2 lg:col-span-1">
                     <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
 
                     <input
@@ -185,6 +211,21 @@ export default function ProjectsPage() {
                       Completed
                     </option>
                     <option value="closed">Closed</option>
+                  </select>
+
+                  <select
+                    value={selectedRole}
+                    onChange={(event) =>
+                      setSelectedRole(event.target.value)
+                    }
+                    className="h-11 rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  >
+                    <option value="all">All roles</option>
+                    {roles.map((role) => (
+                      <option key={role.id} value={String(role.id)}>
+                        {role.name}
+                      </option>
+                    ))}
                   </select>
 
                   <select
@@ -220,6 +261,7 @@ export default function ProjectsPage() {
 
                   {(searchText ||
                     selectedStatus !== "all" ||
+                    selectedRole !== "all" ||
                     selectedSkill !== "all") && (
                     <button
                       type="button"
